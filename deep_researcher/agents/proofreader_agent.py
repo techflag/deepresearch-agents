@@ -17,7 +17,7 @@ The Agent then outputs the final markdown for the report.
 from pydantic import BaseModel, Field
 from typing import List
 from .baseclass import ResearchAgent
-from ..llm_client import reasoning_model
+from ..llm_client import fast_model
 from datetime import datetime
 
 
@@ -63,5 +63,5 @@ Guidelines:
 proofreader_agent = ResearchAgent(
     name="ProofreaderAgent",
     instructions=INSTRUCTIONS,
-    model=reasoning_model
+    model=fast_model
 )
