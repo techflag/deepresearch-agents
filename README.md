@@ -245,6 +245,8 @@ We include an `output_length` parameter for the `IterativeResearcher` to give th
 
 ## TODOs:
 
+- [ ] Add unit tests for different model providers
+- [ ] Add example implementation for different models
 - [ ] Add compatibility with other search providers (e.g. SearXNG, Bing, Tavily, DuckDuckGo etc.)
 - [ ] Add caching (e.g. Redis) of scraped web pages to avoid duplicate work/calls
 - [ ] Add more specialized research tools (e.g. Wikipedia, arXiv, data analysis etc.)
