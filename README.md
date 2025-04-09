@@ -44,9 +44,9 @@ It is worth noting that the deep research agent does not ask clarifying question
 ## Sample Output
 
 Deep Research Examples (using DeepResearcher):
+- [Life and Works of Plato](examples/sample_output/plato.md) - 7,980 words
 - [Text Book on Quantum Computing](examples/sample_output/quantum_computing.md) - 5,253 words
 - [Deep-Dive on Tesla](examples/sample_output/tesla.md) - 4,732 words
-- [Life and Works of Plato](examples/sample_output/plato.md) - 3,678 words
 
 Simple Research Examples (using IterativeResearcher):
 - [Quantera Market Size](examples/sample_output/quantera_market_size.md) - 1,001 words
