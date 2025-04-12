@@ -1,20 +1,20 @@
 """
-Agent used to determine which specialized agents should be used to address knowledge gaps.
+用于确定应使用哪些专业代理来解决知识差距的代理。
 
-The Agent takes as input a string in the following format:
+该代理接受以下格式的字符串作为输入：
 ===========================================================
 ORIGINAL QUERY: <original user query>
 
 KNOWLEDGE GAP TO ADDRESS: <knowledge gap that needs to be addressed>
 ===========================================================
 
-The Agent then:
-1. Analyzes the knowledge gap to determine which agents are best suited to address it
-2. Returns an AgentSelectionPlan object containing a list of AgentTask objects
+然后代理：
+1. 分析知识差距，确定哪些代理最适合解决它
+2. 返回一个AgentSelectionPlan对象，其中包含AgentTask对象列表
 
-The available agents are:
-- WebSearchAgent: General web search for broad topics
-- SiteCrawlerAgent: Crawl the pages of a specific website to retrieve information about it
+可用的代理有：
+- WebSearchAgent：用于广泛主题的一般网络搜索
+- SiteCrawlerAgent：爬取特定网站的页面以检索有关它的信息
 """
 
 from pydantic import BaseModel, Field
@@ -26,44 +26,44 @@ from .utils.parse_output import create_type_parser
 
 
 class AgentTask(BaseModel):
-    """A task for a specific agent to address knowledge gaps"""
-    gap: Optional[str] = Field(description="The knowledge gap being addressed", default=None)
-    agent: str = Field(description="The name of the agent to use")
-    query: str = Field(description="The specific query for the agent")
-    entity_website: Optional[str] = Field(description="The website of the entity being researched, if known", default=None)
+    """特定代理解决知识差距的任务"""
+    gap: Optional[str] = Field(description="正在解决的知识差距", default=None)
+    agent: str = Field(description="要使用的代理名称")
+    query: str = Field(description="代理的具体查询")
+    entity_website: Optional[str] = Field(description="被研究实体的网站，如果已知", default=None)
 
 
 class AgentSelectionPlan(BaseModel):
-    """Plan for which agents to use for knowledge gaps"""
-    tasks: List[AgentTask] = Field(description="List of agent tasks to address knowledge gaps")
+    """用于知识差距的代理使用计划"""
+    tasks: List[AgentTask] = Field(description="解决知识差距的代理任务列表")
 
 
 INSTRUCTIONS = f"""
-You are an Tool Selector responsible for determining which specialized agents should address a knowledge gap in a research project.
-Today's date is {datetime.now().strftime("%Y-%m-%d")}.
+你是一个工具选择器，负责确定哪些专业代理应该解决研究项目中的知识差距。
+今天的日期是{datetime.now().strftime("%Y-%m-%d")}。
 
-You will be given:
-1. The original user query
-2. A knowledge gap identified in the research
-3. A full history of the tasks, actions, findings and thoughts you've made up until this point in the research process
+你将获得：
+1. 原始用户查询
+2. 研究中确定的知识差距
+3. 你在研究过程中迄今为止所做的任务、行动、发现和思考的完整历史
 
-Your task is to decide:
-1. Which specialized agents are best suited to address the gap
-2. What specific queries should be given to the agents (keep this short - 3-6 words)
+你的任务是决定：
+1. 哪些专业代理最适合解决这个差距
+2. 应该给代理什么具体查询（保持简短 - 3-6个词）
 
-Available specialized agents:
-- WebSearchAgent: General web search for broad topics (can be called multiple times with different queries)
-- SiteCrawlerAgent: Crawl the pages of a specific website to retrieve information about it - use this if you want to find out something about a particular company, entity or product
+可用的专业代理：
+- WebSearchAgent：用于广泛主题的一般网络搜索（可以用不同的查询多次调用）
+- SiteCrawlerAgent：爬取特定网站的页面以检索有关它的信息 - 如果你想了解特定公司、实体或产品的信息，请使用此代理
 
-Guidelines:
-- Aim to call at most 3 agents at a time in your final output
-- You can list the WebSearchAgent multiple times with different queries if needed to cover the full scope of the knowledge gap
-- Be specific and concise (3-6 words) with the agent queries - they should target exactly what information is needed
-- If you know the website or domain name of an entity being researched, always include it in the query
-- If a gap doesn't clearly match any agent's capability, default to the WebSearchAgent
-- Use the history of actions / tool calls as a guide - try not to repeat yourself if an approach didn't work previously
-
-Only output JSON. Follow the JSON schema below. Do not output anything else. I will be parsing this with Pydantic so output valid JSON only:
+指南：
+- 在最终输出中最多同时调用3个代理
+- 如果需要覆盖知识差距的全部范围，你可以列出多个具有不同查询的WebSearchAgent
+- 对代理查询要具体且简洁（3-6个词）- 它们应该精确针对所需的信息
+- 如果你知道正在研究的实体的网站或域名，始终将其包含在查询中
+- 如果差距与任何代理的能力不明确匹配，默认使用WebSearchAgent
+- 使用行动/工具调用的历史作为指导 - 如果之前的方法没有效果，尽量不要重复
+ 
+仅输出JSON。遵循以下JSON模式。不要输出其他任何内容。我将使用Pydantic解析，因此仅输出有效的JSON：
 {AgentSelectionPlan.model_json_schema()}
 """
 

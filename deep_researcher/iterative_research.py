@@ -13,16 +13,16 @@ from pydantic import BaseModel, Field
 
 
 class IterationData(BaseModel):
-    """Data for a single iteration of the research loop."""
-    gap: str = Field(description="The gap addressed in the iteration", default_factory=list)
-    tool_calls: List[str] = Field(description="The tool calls made", default_factory=list)
-    findings: List[str] = Field(description="The findings collected from tool calls", default_factory=list)
-    thought: List[str] = Field(description="The thinking done to reflect on the success of the iteration and next steps", default_factory=list)
+    """单次研究循环迭代的数据。"""
+    gap: str = Field(description="迭代中解决的差距", default_factory=list)
+    tool_calls: List[str] = Field(description="进行的工具调用", default_factory=list)
+    findings: List[str] = Field(description="从工具调用中收集的发现", default_factory=list)
+    thought: List[str] = Field(description="对迭代成功和下一步进行反思的思考", default_factory=list)
 
 
 class Conversation(BaseModel):
-    """A conversation between the user and the iterative researcher."""
-    history: List[IterationData] = Field(description="The data for each iteration of the research loop", default_factory=list)
+    """用户与迭代研究者之间的对话。"""
+    history: List[IterationData] = Field(description="研究循环每次迭代的数据", default_factory=list)
 
     def add_iteration(self, iteration_data: Optional[IterationData] = None):
         if iteration_data is None:
@@ -57,10 +57,10 @@ class Conversation(BaseModel):
         return [finding for iteration_data in self.history for finding in iteration_data.findings]
 
     def compile_conversation_history(self) -> str:
-        """Compile the conversation history into a string."""
+        """将对话历史编译成字符串。"""
         conversation = ""
         for iteration_num, iteration_data in enumerate(self.history):
-            conversation += f"[ITERATION {iteration_num + 1}]\n\n"
+            conversation += f"[迭代 {iteration_num + 1}]\n\n"
             if iteration_data.thought:
                 conversation += f"{self.get_thought_string(iteration_num)}\n\n"
             if iteration_data.gap:
@@ -73,53 +73,53 @@ class Conversation(BaseModel):
         return conversation
     
     def get_task_string(self, iteration_num: int) -> str:
-        """Get the task for the current iteration."""
+        """获取当前迭代的任务。"""
         if self.history[iteration_num].gap:
-            return f"<task>\nAddress this knowledge gap: {self.history[iteration_num].gap}\n</task>"
+            return f"<task>\n解决这个知识差距：{self.history[iteration_num].gap}\n</task>"
         return ""
     
     def get_action_string(self, iteration_num: int) -> str:
-        """Get the action for the current iteration."""
+        """获取当前迭代的行动。"""
         if self.history[iteration_num].tool_calls:
             joined_calls = '\n'.join(self.history[iteration_num].tool_calls)
             return (
-                "<action>\nCalling the following tools to address the knowledge gap:\n"
+                "<action>\n调用以下工具来解决知识差距：\n"
                 f"{joined_calls}\n</action>"
             )
         return ""
         
     def get_findings_string(self, iteration_num: int) -> str:
-        """Get the findings for the current iteration."""
+        """获取当前迭代的发现。"""
         if self.history[iteration_num].findings:
             joined_findings = '\n\n'.join(self.history[iteration_num].findings)
             return f"<findings>\n{joined_findings}\n</findings>"
         return ""
     
     def get_thought_string(self, iteration_num: int) -> str:
-        """Get the thought for the current iteration."""
+        """获取当前迭代的思考。"""
         if self.history[iteration_num].thought:
             return f"<thought>\n{self.history[iteration_num].thought}\n</thought>"
         return ""
     
     def latest_task_string(self) -> str:
-        """Get the latest task."""
+        """获取最新的任务。"""
         return self.get_task_string(len(self.history) - 1)
     
     def latest_action_string(self) -> str:
-        """Get the latest action."""
+        """获取最新的行动。"""
         return self.get_action_string(len(self.history) - 1)
     
     def latest_findings_string(self) -> str:
-        """Get the latest findings."""
+        """获取最新的发现。"""
         return self.get_findings_string(len(self.history) - 1)
     
     def latest_thought_string(self) -> str:
-        """Get the latest thought."""
+        """获取最新的思考。"""
         return self.get_thought_string(len(self.history) - 1)
     
 
 class IterativeResearcher:
-    """Manager for the iterative research workflow that conducts research on a topic or subtopic by running a continuous research loop."""
+    """迭代研究工作流的管理器，通过运行连续的研究循环对主题或子主题进行研究。"""
 
     def __init__(
         self, 
@@ -140,53 +140,53 @@ class IterativeResearcher:
     async def run(
             self, 
             query: str,
-            output_length: str = "",  # A text description of the desired output length, can be left blank
-            output_instructions: str = "",  # Instructions for the final report (e.g. don't include any headings, just a couple of paragraphs of text)
+            output_length: str = "",  # 所需输出长度的文本描述，可以留空
+            output_instructions: str = "",  # 最终报告的指示（例如，不包括任何标题，只有几段文本）
             background_context: str = "",
         ) -> str:
-        """Run the deep research workflow for a given query."""
+        """为给定查询运行深度研究工作流。"""
         self.start_time = time.time()
 
         if self.tracing:
             trace_id = gen_trace_id()
             workflow_trace = trace("iterative_researcher", trace_id=trace_id)
-            print(f"View trace: https://platform.openai.com/traces/trace?trace_id={trace_id}")
+            print(f"查看跟踪：https://platform.openai.com/traces/trace?trace_id={trace_id}")
             workflow_trace.start(mark_as_current=True)
 
-        self._log_message("=== Starting Iterative Research Workflow ===")
+        self._log_message("=== 开始迭代研究工作流 ===")
         
-        # Iterative research loop
+        # 迭代研究循环
         while self.should_continue and self._check_constraints():
             self.iteration += 1
-            self._log_message(f"\n=== Starting Iteration {self.iteration} ===")
+            self._log_message(f"\n=== 开始迭代 {self.iteration} ===")
 
-            # Set up blank IterationData for this iteration
+            # 为此迭代设置空白的 IterationData
             self.conversation.add_iteration()
 
-            # 1. Generate observations
+            # 1. 生成观察
             observations: str = await self._generate_observations(query, background_context=background_context)
 
-            # 2. Evaluate current gaps in the research
+            # 2. 评估研究中的当前差距
             evaluation: KnowledgeGapOutput = await self._evaluate_gaps(query, background_context=background_context)
             
-            # Check if we should continue or break the loop
+            # 检查是否应继续或中断循环
             if not evaluation.research_complete:
                 next_gap = evaluation.outstanding_gaps[0]
 
-                # 3. Select agents to address knowledge gap
+                # 3. 选择代理来解决知识差距
                 selection_plan: AgentSelectionPlan = await self._select_agents(next_gap, query, background_context=background_context)
 
-                # 4. Run the selected agents to gather information
+                # 4. 运行选定的代理以收集信息
                 results: Dict[str, ToolAgentOutput] = await self._execute_tools(selection_plan.tasks)
             else:
                 self.should_continue = False
-                self._log_message("=== IterativeResearcher Marked As Complete - Finalizing Output ===")
+                self._log_message("=== 迭代研究者标记为完成 - 正在完成输出 ===")
         
-        # Create final report
+        # 创建最终报告
         report = await self._create_final_report(query, length=output_length, instructions=output_instructions)
         
         elapsed_time = time.time() - self.start_time
-        self._log_message(f"IterativeResearcher completed in {int(elapsed_time // 60)} minutes and {int(elapsed_time % 60)} seconds after {self.iteration} iterations.")
+        self._log_message(f"迭代研究者在 {int(elapsed_time // 60)} 分钟和 {int(elapsed_time % 60)} 秒后完成，经过 {self.iteration} 次迭代。")
         
         if self.tracing:
             workflow_trace.finish(reset_current=True)
@@ -194,16 +194,16 @@ class IterativeResearcher:
         return report
     
     def _check_constraints(self) -> bool:
-        """Check if we've exceeded our constraints (max iterations or time)."""
+        """检查是否超出了我们的约束（最大迭代次数或时间）。"""
         if self.iteration >= self.max_iterations:
-            self._log_message("\n=== Ending Research Loop ===")
-            self._log_message(f"Reached maximum iterations ({self.max_iterations})")
+            self._log_message("\n=== 结束研究循环 ===")
+            self._log_message(f"达到最大迭代次数（{self.max_iterations}）")
             return False
         
         elapsed_minutes = (time.time() - self.start_time) / 60
         if elapsed_minutes >= self.max_time_minutes:
-            self._log_message("\n=== Ending Research Loop ===")
-            self._log_message(f"Reached maximum time ({self.max_time_minutes} minutes)")
+            self._log_message("\n=== 结束研究循环 ===")
+            self._log_message(f"达到最大时间（{self.max_time_minutes} 分钟）")
             return False
         
         return True
@@ -213,29 +213,36 @@ class IterativeResearcher:
         query: str,
         background_context: str = ""
     ) -> KnowledgeGapOutput:
-        """Evaluate the current state of research and identify knowledge gaps."""
+        """评估研究的当前状态并识别知识差距。"""
 
-        background = f"BACKGROUND CONTEXT:\n{background_context}" if background_context else ""
+        background = f"背景上下文：\n{background_context}" if background_context else ""
 
         input_str = f"""
-        Current Iteration Number: {self.iteration}
-        Time Elapsed: {(time.time() - self.start_time) / 60:.2f} minutes of maximum {self.max_time_minutes} minutes
+        当前迭代次数：{self.iteration}
+        已用时间：{(time.time() - self.start_time) / 60:.2f} 分钟，最大 {self.max_time_minutes} 分钟
 
-        ORIGINAL QUERY:
+        原始查询：
         {query}
 
         {background}
 
-        HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
-        {self.conversation.compile_conversation_history() or "No previous actions, findings or thoughts available."}        
+        行动、发现和思考的历史：
+        {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}        
         """
-
+        self._log_message(f"\n=== _evaluate_gaps ==={input_str}")
         result = await ResearchRunner.run(
             knowledge_gap_agent,
             input_str,
         )
         
-        evaluation = result.final_output_as(KnowledgeGapOutput)
+        try:
+            evaluation = result.final_output_as(KnowledgeGapOutput)
+        except Exception as e:
+            self._log_message(f"知识差距评估解析错误: {str(e)}")
+            evaluation = KnowledgeGapOutput(
+                research_complete=False,
+                outstanding_gaps=["无法解析知识差距评估结果"]
+            )
 
         if not evaluation.research_complete:
             next_gap = evaluation.outstanding_gaps[0]
@@ -250,23 +257,23 @@ class IterativeResearcher:
         query: str,
         background_context: str = ""
     ) -> AgentSelectionPlan:
-        """Select agents to address the identified knowledge gap."""
+        """选择代理来解决已识别的知识差距。"""
         
-        background = f"BACKGROUND CONTEXT:\n{background_context}" if background_context else ""
+        background = f"背景上下文：\n{background_context}" if background_context else ""
 
         input_str = f"""
-        ORIGINAL QUERY:
+        原始查询：
         {query}
 
-        KNOWLEDGE GAP TO ADDRESS:
+        要解决的知识差距：
         {gap}
 
         {background}
 
-        HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
-        {self.conversation.compile_conversation_history() or "No previous actions, findings or thoughts available."}
+        行动、发现和思考的历史：
+        {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}
         """
-        
+        self._log_message(f"\n=== 选择代理以解决知识差距：{gap} ===")
         result = await ResearchRunner.run(
             tool_selector_agent,
             input_str,
@@ -274,32 +281,32 @@ class IterativeResearcher:
         
         selection_plan = result.final_output_as(AgentSelectionPlan)
 
-        # Add the tool calls to the conversation
+        # 将工具调用添加到对话中
         self.conversation.set_latest_tool_calls([
-            f"[Agent] {task.agent} [Query] {task.query} [Entity] {task.entity_website if task.entity_website else 'null'}" for task in selection_plan.tasks
+            f"[代理] {task.agent} [查询] {task.query} [实体] {task.entity_website if task.entity_website else 'null'}" for task in selection_plan.tasks
         ])
         self._log_message(self.conversation.latest_action_string())
         
         return selection_plan
     
     async def _execute_tools(self, tasks: List[AgentTask]) -> Dict[str, ToolAgentOutput]:
-        """Execute the selected tools concurrently to gather information."""
-        with custom_span("Execute Tool Agents"):
-            # Create a task for each agent
+        """并发执行选定的工具以收集信息。"""
+        with custom_span("执行工具代理"):
+            # 为每个代理创建一个任务
             async_tasks = []
             for task in tasks:
                 async_tasks.append(self._run_agent_task(task))
             
-            # Run all tasks concurrently
+            # 并发运行所有任务
             num_completed = 0
             results = {}
             for future in asyncio.as_completed(async_tasks):
                 gap, agent_name, result = await future
                 results[f"{agent_name}_{gap}"] = result
                 num_completed += 1
-                self._log_message(f"<processing>\nTool execution progress: {num_completed}/{len(async_tasks)}\n</processing>")
+                self._log_message(f"<processing>\n工具执行进度：{num_completed}/{len(async_tasks)}\n</processing>")
 
-            # Add findings from the tool outputs to the conversation
+            # 将工具输出的发现添加到对话中
             findings = []
             for tool_output in results.values():
                 findings.append(tool_output.output)
@@ -308,7 +315,7 @@ class IterativeResearcher:
             return results
     
     async def _run_agent_task(self, task: AgentTask) -> tuple[str, str, ToolAgentOutput]:
-        """Run a single agent task and return the result."""
+        """运行单个代理任务并返回结果。"""
         try:
             agent_name = task.agent
             agent = TOOL_AGENTS.get(agent_name)
@@ -317,42 +324,42 @@ class IterativeResearcher:
                     agent,
                     task.model_dump_json(),
                 )
-                # Extract ToolAgentOutput from RunResult
+                # 从 RunResult 中提取 ToolAgentOutput
                 output = result.final_output_as(ToolAgentOutput)
             else:
                 output = ToolAgentOutput(
-                    output=f"No implementation found for agent {agent_name}",
+                    output=f"未找到代理 {agent_name} 的实现",
                     sources=[]
                 )
             
             return task.gap, agent_name, output
         except Exception as e:
             error_output = ToolAgentOutput(
-                output=f"Error executing {task.agent} for gap '{task.gap}': {str(e)}",
+                output=f"执行 {task.agent} 解决差距 '{task.gap}' 时出错：{str(e)}",
                 sources=[]
             )
             return task.gap, task.agent, error_output
         
     async def _generate_observations(self, query: str, background_context: str = "") -> str:
-        """Generate observations from the current state of the research."""
+        """从研究的当前状态生成观察。"""
                 
-        background = f"BACKGROUND CONTEXT:\n{background_context}" if background_context else ""
+        background = f"背景上下文：\n{background_context}" if background_context else ""
 
         input_str = f"""
-        ORIGINAL QUERY:
+        原始查询：
         {query}
 
         {background}
 
-        HISTORY OF ACTIONS, FINDINGS AND THOUGHTS:
-        {self.conversation.compile_conversation_history() or "No previous actions, findings or thoughts available."}
+        行动、发现和思考的历史：
+        {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}
         """
         result = await ResearchRunner.run(
             thinking_agent,
             input_str,
         )
 
-        # Add the observations to the conversation
+        # 将观察添加到对话中
         observations = result.final_output
         self.conversation.set_latest_thought(observations)
         self._log_message(self.conversation.latest_thought_string())
@@ -364,21 +371,21 @@ class IterativeResearcher:
         length: str = "",
         instructions: str = ""
         ) -> str:
-        """Create the final response from the completed draft."""
-        self._log_message("=== Drafting Final Response ===")
+        """从完成的草稿创建最终响应。"""
+        self._log_message("=== 起草最终响应 ===")
 
-        length_str = f"* The full response should be approximately {length}.\n" if length else ""
+        length_str = f"* 完整响应应约为 {length}。\n" if length else ""
         instructions_str = f"* {instructions}" if instructions else ""
-        guidelines_str = ("\n\nGUIDELINES:\n" + length_str + instructions_str).strip('\n') if length or instructions else ""
+        guidelines_str = ("\n\n指南：\n" + length_str + instructions_str).strip('\n') if length or instructions else ""
 
-        all_findings = '\n\n'.join(self.conversation.get_all_findings()) or "No findings available yet."
+        all_findings = '\n\n'.join(self.conversation.get_all_findings()) or "尚可用发现。"
 
         input_str = f"""
-        Provide a response based on the query and findings below with as much detail as possible. {guidelines_str}
+        根据以下查询和发现提供尽可能详细的响应。{guidelines_str}
 
-        QUERY: {query}
+        查询：{query}
 
-        FINDINGS:
+        发现：
         {all_findings}
         """
 
@@ -387,11 +394,11 @@ class IterativeResearcher:
             input_str,
         )
         
-        self._log_message("Final response from IterativeResearcher created successfully")
+        self._log_message("迭代研究者成功创建最终响应")
         
         return result.final_output
     
     def _log_message(self, message: str) -> None:
-        """Log a message if verbose is True"""
+        """如果 verbose 为 True，则记录消息"""
         if self.verbose:
             print(message)

@@ -82,6 +82,7 @@ def create_type_parser(type: BaseModel) -> Callable[[str], BaseModel]:
     def convert_json_string_to_type(output: str) -> BaseModel:
         """Take a string output and parse it as a Pydantic model"""
         output_dict = parse_json_output(output)
+        print(f"convert_json_string_to_type:{output_dict}")
         return type.model_validate(output_dict)
 
     return convert_json_string_to_type

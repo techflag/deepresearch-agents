@@ -1,9 +1,8 @@
 """
-Agent used to synthesize a final report by iteratively writing each section of the report.
-Used to produce long reports given drafts of each section. Broadly aligned with the methodology described here:
+用于通过迭代编写报告的每个部分来合成最终报告的代理。
+用于根据每个部分的草稿生成长篇报告。
 
-
-The LongWriterAgent takes as input a string in the following format:
+LongWriterAgent接受以下格式的字符串作为输入：
 ===========================================================
 ORIGINAL QUERY: <original user query>
 
@@ -14,11 +13,11 @@ TITLE OF NEXT SECTION TO WRITE: <title of the next section of the report to be w
 DRAFT OF NEXT SECTION: <draft of the next section of the report>
 ===========================================================
 
-The Agent then:
-1. Reads the current draft and the draft of the next section
-2. Writes the next section of the report
-3. Produces an updated draft of the new section to fit the flow of the report
-4. Returns the updated draft of the new section along with references/citations
+然后代理：
+1. 阅读当前草稿和下一部分的草稿
+2. 编写报告的下一部分
+3. 生成更新后的新部分草稿以适应报告的流程
+4. 返回更新后的新部分草稿以及参考文献/引用
 """
 from .baseclass import ResearchAgent, ResearchRunner
 from ..llm_client import fast_model, model_supports_structured_output
@@ -31,40 +30,40 @@ import re
 
 
 class LongWriterOutput(BaseModel):
-    next_section_markdown: str = Field(description="The final draft of the next section in markdown format")
-    references: List[str] = Field(description="A list of URLs and their corresponding reference numbers for the section")
+    next_section_markdown: str = Field(description="下一部分的最终草稿，采用markdown格式")
+    references: List[str] = Field(description="该部分的URL列表及其对应的参考编号")
 
 
 INSTRUCTIONS = f"""
-You are an expert report writer tasked with iteratively writing each section of a report. 
-Today's date is {datetime.now().strftime('%Y-%m-%d')}.
-You will be provided with:
-1. The original research query
-3. A final draft of the report containing the table of contents and all sections written up until this point (in the first iteration there will be no sections written yet)
-3. A first draft of the next section of the report to be written
+你是一位专家报告撰写者，负责迭代编写报告的每个部分。
+今天的日期是{datetime.now().strftime('%Y-%m-%d')}。
+你将获得：
+1. 原始研究查询
+3. 包含目录和所有已编写部分的报告最终草稿（在第一次迭代中尚未编写任何部分）
+3. 报告下一部分的初稿
 
-OBJECTIVE:
-1. Write a final draft of the next section of the report with numbered citations in square brackets in the body of the report
-2. Produce a list of references to be appended to the end of the report
+目标：
+1. 编写报告下一部分的最终草稿，在报告正文中使用方括号中的编号引用
+2. 生成要附加到报告末尾的参考文献列表
 
-CITATIONS/REFERENCES:
-The citations should be in numerical order, written in numbered square brackets in the body of the report.
-Separately, a list of all URLs and their corresponding reference numbers will be included at the end of the report.
-Follow the example below for fomartting.
+引用/参考文献：
+引用应按数字顺序排列，在报告正文中使用编号方括号编写。
+单独地，所有URL及其对应的参考编号将包含在报告末尾。
+请按照以下示例进行格式化。
 
 LongWriterOutput(
-    next_section_markdown="The company specializes in IT consulting [1](https://example.com/first-source-url). It operates in the software services market which is expected to grow at 10% per year [2](https://example.com/second-source-url).",
+    next_section_markdown="该公司专注于IT咨询 [1](https://example.com/first-source-url)。它在软件服务市场运营，预计每年增长10% [2](https://example.com/second-source-url)。",
     references=["[1] https://example.com/first-source-url", "[2] https://example.com/second-source-url"]
 )
 
-GUIDELINES:
-- You can reformat and reorganize the flow of the content and headings within a section to flow logically, but DO NOT remove details that were included in the first draft
-- Only remove text from the first draft if it is already mentioned earlier in the report, or if it should be covered in a later section per the table of contents
-- Ensure the heading for the section matches the table of contents
-- Format the final output and references section as markdown
-- Do not include a title for the reference section, just a list of numbered references
+指南：
+- 你可以重新格式化和重组部分内容和标题的流程以使其逻辑流畅，但不要删除初稿中包含的细节
+- 仅当文本已在报告前面提到，或根据目录应在后面部分中涵盖时，才从初稿中删除文本
+- 确保部分标题与目录匹配
+- 将最终输出和参考部分格式化为markdown
+- 不要为参考部分包含标题，只需列出编号的参考文献
 
-Only output JSON. Follow the JSON schema below. Do not output anything else. I will be parsing this with Pydantic so output valid JSON only:
+仅输出JSON。遵循以下JSON模式。不要输出其他任何内容。我将使用Pydantic解析，因此仅输出有效的JSON：
 {LongWriterOutput.model_json_schema()}
 """
 
@@ -85,7 +84,7 @@ async def write_next_section(
     next_section_title: str,
     next_section_draft: str,
 ) -> LongWriterOutput:
-    """Write the next section of the report"""
+    """编写报告的下一部分"""
 
     user_message = f"""
     <ORIGINAL QUERY>
@@ -93,7 +92,7 @@ async def write_next_section(
     </ORIGINAL QUERY>
 
     <CURRENT REPORT DRAFT>
-    {report_draft or "No draft yet"}
+    {report_draft or "尚无草稿"}
     </CURRENT REPORT DRAFT>
 
     <TITLE OF NEXT SECTION TO WRITE>
@@ -118,43 +117,43 @@ async def write_report(
     report_title: str,
     report_draft: ReportDraft,
 ) -> str:
-    """Write the final report by iteratively writing each section"""
+    """通过迭代编写每个部分来编写最终报告"""
 
-    # Initialize the final draft of the report with the title and table of contents
-    final_draft = f"# {report_title}\n\n" + "## Table of Contents\n\n" + "\n".join([f"{i+1}. {section.section_title}" for i, section in enumerate(report_draft.sections)]) + "\n\n"
+    # 使用标题和目录初始化报告的最终草稿
+    final_draft = f"# {report_title}\n\n" + "## 目录\n\n" + "\n".join([f"{i+1}. {section.section_title}" for i, section in enumerate(report_draft.sections)]) + "\n\n"
     all_references = []
 
     for section in report_draft.sections:
-        # Produce the final draft of each section and add it to the report with corresponding references
+        # 生成每个部分的最终草稿，并将其与相应的参考文献一起添加到报告中
         next_section_draft = await write_next_section(original_query, final_draft, section.section_title, section.section_content)
         section_markdown, all_references = reformat_references(
-            next_section_draft.next_section_markdown, 
+            next_section_draft.next_section_markdown,
             next_section_draft.references,
             all_references
         )
         section_markdown = reformat_section_headings(section_markdown)
         final_draft += section_markdown + '\n\n'
 
-    # Add the final references to the end of the report
-    final_draft += '## References:\n\n' + '  \n'.join(all_references)
+    # 将最终参考文献添加到报告末尾
+    final_draft += '## 参考文献：\n\n' + '  \n'.join(all_references)
     return final_draft
 
 
 def reformat_references(
-        section_markdown: str, 
-        section_references: List[str], 
-        all_references: List[str] 
+        section_markdown: str,
+        section_references: List[str],
+        all_references: List[str]
     ) -> Tuple[str, List[str]]:
     """
-    This method gracefully handles the re-numbering, de-duplication and re-formatting of references as new sections are added to the report draft.
-    It takes as input:
-    1. The markdown content of the new section containing inline references in square brackets, e.g. [1], [2]
-    2. The list of references for the new section, e.g. ["[1] https://example1.com", "[2] https://example2.com"]
-    3. The list of references covering all prior sections of the report
+    此方法优雅地处理引用的重新编号、去重和重新格式化，随着新部分添加到报告草稿中。
+    它接受以下输入：
+    1. 包含方括号内内联引用的新部分的markdown内容，例如 [1], [2]
+    2. 新部分的引用列表，例如 ["[1] https://example1.com", "[2] https://example2.com"]
+    3. 涵盖报告所有先前部分的引用列表
 
-    It returns:
-    1. The updated markdown content of the new section with the references re-numbered and de-duplicated, such that they increment from the previous references
-    2. The updated list of references for the full report, to include the new section's references
+    它返回：
+    1. 更新后的新部分的markdown内容，其中引用已重新编号和去重，使其从先前的引用递增
+    2. 更新后的完整报告的引用列表，包括新部分的引用
     """
     def convert_ref_list_to_map(ref_list: List[str]) -> Dict[str, str]:
         ref_map = {}
@@ -164,7 +163,7 @@ def reformat_references(
                 url = ref.split(']', 1)[1].strip()
                 ref_map[url] = ref_num
             except ValueError:
-                print(f"Invalid reference format: {ref}")
+                print(f"无效的引用格式: {ref}")
                 continue
         return ref_map
 
@@ -178,21 +177,21 @@ def reformat_references(
         if url in report_urls:
             section_to_report_ref_map[section_ref_num] = report_ref_map[url]
         else:
-            # If the reference is not in the report, add it to the report
+            # 如果引用不在报告中，将其添加到报告中
             ref_count += 1
             section_to_report_ref_map[section_ref_num] = ref_count
             all_references.append(f"[{ref_count}] {url}")
 
     def replace_reference(match):
-        # Extract the reference number from the match
+        # 从匹配中提取引用编号
         ref_num = int(match.group(1))
-        # Look up the new reference number
+        # 查找新的引用编号
         mapped_ref_num = section_to_report_ref_map.get(ref_num)
         if mapped_ref_num:
             return f'[{mapped_ref_num}]'
         return ''
-    
-    # Replace all references in a single pass using a replacement function
+
+    # 使用替换函数一次性替换所有引用
     section_markdown = re.sub(r'\[(\d+)\]', replace_reference, section_markdown)
 
     return section_markdown, all_references
@@ -200,28 +199,29 @@ def reformat_references(
 
 def reformat_section_headings(section_markdown: str) -> str:
     """
-    Reformat the headings of a section to be consistent with the report, by rebasing the section's heading to be a level-2 heading
+    重新格式化部分的标题，使其与报告一致，将部分的标题重新设置为二级标题
 
-    E.g. this:
-    # Big Title
-    Some content
-    ## Subsection
+    例如，这个：
+    # 大标题
+    一些内容
+    ## 子部分
 
-    Becomes this:
-    ## Big Title
-    Some content
-    ### Subsection
+    变成这个：
+    ## 大标题
+    一些内容
+    ### 子部分
     """
-    # If the section is empty, return as-is
+    # 如果部分为空，按原样返回
+    
     if not section_markdown.strip():
         return section_markdown
 
-    # Find the first heading level
+    # 查找第一个标题级别
     first_heading_match = re.search(r'^(#+)\s', section_markdown, re.MULTILINE)
     if not first_heading_match:
         return section_markdown
 
-    # Calculate the level adjustment needed
+    # 计算需要的级别调整
     first_heading_level = len(first_heading_match.group(1))
     level_adjustment = 2 - first_heading_level
 
@@ -231,5 +231,5 @@ def reformat_section_headings(section_markdown: str) -> str:
         new_level = max(2, len(hashes) + level_adjustment)
         return '#' * new_level + ' ' + content
 
-    # Apply the heading adjustment to all headings in one pass
+    # 一次性对所有标题应用标题调整
     return re.sub(r'^(#+)\s(.+)$', adjust_heading_level, section_markdown, flags=re.MULTILINE)

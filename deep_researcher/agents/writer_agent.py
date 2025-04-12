@@ -1,7 +1,7 @@
 """
-Agent used to synthesize a final report using the summaries produced from the previous steps and agents.
+用于使用前面步骤和代理产生的摘要合成最终报告的代理。
 
-The WriterAgent takes as input a string in the following format:
+WriterAgent 接受以下格式的字符串作为输入：
 ===========================================================
 ORIGINAL QUERY: <original user query>
 
@@ -12,39 +12,39 @@ KNOWLEDGE GAPS BEING ADDRESSED: <knowledge gaps being addressed>
 NEW INFORMATION: <any additional information gathered from specialized agents>
 ===========================================================
 
-The Agent then:
-1. Creates an outline for the report structure
-2. Generates a comprehensive markdown report based on all available information
-3. Includes proper citations for sources in the format [1], [2], etc.
-4. Returns a string containing the markdown formatted report
+然后代理：
+1. 为报告结构创建大纲
+2. 基于所有可用信息生成全面的 markdown 报告
+3. 以 [1]、[2] 等格式包含适当的来源引用
+4. 返回包含 markdown 格式报告的字符串
 
-The WriterAgent defined here generates the final structured report in markdown format.
+这里定义的 WriterAgent 以 markdown 格式生成最终结构化报告。
 """
 from .baseclass import ResearchAgent
 from ..llm_client import main_model
 from datetime import datetime
 
 INSTRUCTIONS = f"""
-You are a senior researcher tasked with comprehensively answering a research query. 
-Today's date is {datetime.now().strftime('%Y-%m-%d')}.
-You will be provided with the original query along with research findings put together by a research assistant.
-Your objective is to generate the final response in markdown format.
-The response should be as lengthy and detailed as possible with the information provided, focusing on answering the original query.
-In your final output, include references to the source URLs for all information and data gathered. 
-This should be formatted in the form of a numbered square bracket next to the relevant information, 
-followed by a list of URLs at the end of the response, per the example below.
+你是一位资深研究员，负责全面回答研究查询。
+今天的日期是 {datetime.now().strftime('%Y-%m-%d')}。
+你将获得原始查询以及研究助理整理的研究发现。
+你的目标是以 markdown 格式生成最终回应。
+回应应该在提供的信息范围内尽可能详细和全面，重点回答原始查询。
+在你的最终输出中，包含所有收集的信息和数据的来源 URL 引用。
+这应该以相关信息旁边的编号方括号形式呈现，
+然后在回应末尾列出 URL 列表，如下例所示。
 
-EXAMPLE REFERENCE FORMAT:
-The company has XYZ products [1]. It operates in the software services market which is expected to grow at 10% per year [2].
+示例引用格式：
+该公司拥有 XYZ 产品 [1]。它在软件服务市场运营，预计每年增长 10% [2]。
 
-References:
+参考文献：
 [1] https://example.com/first-source-url
 [2] https://example.com/second-source-url
 
-GUIDELINES:
-* Answer the query directly, do not include unrelated or tangential information.
-* Adhere to any instructions on the length of your final response if provided in the user prompt.
-* If any additional guidelines are provided in the user prompt, follow them exactly and give them precedence over these system instructions.
+指南：
+* 直接回答查询，不要包含不相关或切线信息。
+* 如果用户提示中提供了关于最终回应长度的指示，请遵守。
+* 如果用户提示中提供了任何额外指南，请严格遵循，并优先于这些系统指示。
 """
 
 writer_agent = ResearchAgent(

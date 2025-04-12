@@ -1,17 +1,17 @@
 """
-Agent used to perform web searches and summarize the results.
+用于执行网络搜索并总结结果的代理。
 
-The SearchAgent takes as input a string in the format of AgentTask.model_dump_json(), or can take a simple query string as input
+SearchAgent 接受 AgentTask.model_dump_json() 格式的字符串作为输入，或者可以接受简单的查询字符串作为输入
 
-The Agent then:
-1. Uses the web_search tool to retrieve search results
-2. Analyzes the retrieved information
-3. Writes a 3+ paragraph summary of the search results
-4. Includes citations/URLs in brackets next to information sources
-5. Returns the formatted summary as a string
+然后代理：
+1. 使用 web_search 工具检索搜索结果
+2. 分析检索到的信息
+3. 编写搜索结果的 3+ 段落摘要
+4. 在信息来源旁边的括号中包含引用/URL
+5. 返回格式化的摘要作为字符串
 
-The agent can use either OpenAI's built-in web search capability or a custom
-web search implementation based on environment configuration.
+该代理可以使用 OpenAI 的内置网络搜索功能或基于环境配置的自定义
+网络搜索实现。
 """
 
 from agents import WebSearchTool
@@ -21,24 +21,24 @@ from . import ToolAgentOutput
 from ..baseclass import ResearchAgent
 from ..utils.parse_output import create_type_parser
 
-INSTRUCTIONS = f"""You are a research assistant that specializes in retrieving and summarizing information from the web.
+INSTRUCTIONS = f"""你是一位专门从网络检索和总结信息的研究助手。
 
-OBJECTIVE:
-Given an AgentTask, follow these steps:
-- Convert the 'query' into an optimized SERP search term for Google, limited to 3-5 words
-- If an 'entity_website' is provided, make sure to include the domain name in your optimized Google search term
-- Enter the optimized search term into the web_search tool
-- After using the web_search tool, write a 3+ paragraph summary that captures the main points from the search results
+目标：
+给定一个 AgentTask，按照以下步骤操作：
+- 将"query"转换为优化的 Google SERP 搜索词，限制为 3-5 个词
+- 如果提供了"entity_website"，确保在优化的 Google 搜索词中包含域名
+- 将优化的搜索词输入 web_search 工具
+- 使用 web_search 工具后，编写一个 3+ 段落的摘要，捕捉搜索结果的主要要点
 
-GUIDELINES:
-- In your summary, try to comprehensively answer/address the 'gap' provided (which is the objective of the search)
-- The summary should always quote detailed facts, figures and numbers where these are available
-- If the search results are not relevant to the search term or do not address the 'gap', simply write "No relevant results found"
-- Use headings and bullets to organize the summary if needed
-- Include citations/URLs in brackets next to all associated information in your summary
-- Do not make additional searches
+指南：
+- 在你的摘要中，尝试全面回答/解决提供的"gap"（这是搜索的目标）
+- 摘要应始终引用详细的事实、数据和数字（如果有）
+- 如果搜索结果与搜索词无关或不解决"gap"，只需写"未找到相关结果"
+- 如果需要，使用标题和项目符号组织摘要
+- 在你的摘要中，在所有相关信息旁边的括号中包含引用/URL
+- 不要进行额外的搜索
 
-Only output JSON. Follow the JSON schema below. Do not output anything else. I will be parsing this with Pydantic so output valid JSON only:
+仅输出 JSON。遵循以下 JSON 模式。不要输出其他任何内容。我将使用 Pydantic 解析，因此仅输出有效的 JSON：
 {ToolAgentOutput.model_json_schema()}
 """
 
@@ -46,7 +46,7 @@ selected_model = fast_model
 provider_base_url = get_base_url(selected_model)
 
 if SEARCH_PROVIDER == "openai" and 'openai.com' not in provider_base_url:
-    raise ValueError(f"You have set the SEARCH_PROVIDER to 'openai', but are using the model {str(selected_model.model)} which is not an OpenAI model")
+    raise ValueError(f"你已将 SEARCH_PROVIDER 设置为 'openai'，但正在使用的模型 {str(selected_model.model)} 不是 OpenAI 模型")
 elif SEARCH_PROVIDER == "openai":
     web_search_tool = WebSearchTool()
 else:

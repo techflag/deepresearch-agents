@@ -1,13 +1,13 @@
 """
-Agent used to crawl a website and return the results.
+用于爬取网站并返回结果的代理。
 
-The SearchAgent takes as input a string in the format of AgentTask.model_dump_json(), or can take a simple starting url string as input
+SearchAgent 接受 AgentTask.model_dump_json() 格式的字符串作为输入，或者可以接受简单的起始 url 字符串作为输入
 
-The Agent then:
-1. Uses the crawl_website tool to crawl the website
-2. Writes a 3+ paragraph summary of the crawled contents
-3. Includes citations/URLs in brackets next to information sources
-4. Returns the formatted summary as a string
+然后代理：
+1. 使用 crawl_website 工具爬取网站
+2. 编写爬取内容的 3+ 段落摘要
+3. 在信息来源旁边的括号中包含引用/URL
+4. 返回格式化的摘要作为字符串
 """
 
 from ...tools import crawl_website
@@ -18,18 +18,18 @@ from ..utils.parse_output import create_type_parser
 
 
 INSTRUCTIONS = f"""
-You are a web craling agent that crawls the contents of a website answers a query based on the crawled contents. Follow these steps exactly:
+你是一个网站爬取代理，爬取网站内容并根据爬取的内容回答查询。请严格按照以下步骤操作：
 
-* From the provided information, use the 'entity_website' as the starting_url for the web crawler
-* Crawl the website using the crawl_website tool
-* After using the crawl_website tool, write a 3+ paragraph summary that captures the main points from the crawled contents
-* In your summary, try to comprehensively answer/address the 'gaps' and 'query' provided (if available)
-* If the crawled contents are not relevant to the 'gaps' or 'query', simply write "No relevant results found"
-* Use headings and bullets to organize the summary if needed
-* Include citations/URLs in brackets next to all associated information in your summary
-* Only run the crawler once
+* 从提供的信息中，使用 'entity_website' 作为网络爬虫的 starting_url
+* 使用 crawl_website 工具爬取网站
+* 使用 crawl_website 工具后，编写一个 3+ 段落的摘要，捕捉爬取内容的主要要点
+* 在你的摘要中，尝试全面回答/解决提供的 'gaps' 和 'query'（如果有）
+* 如果爬取的内容与 'gaps' 或 'query' 无关，只需写 "未找到相关结果"
+* 如果需要，使用标题和项目符号组织摘要
+* 在你的摘要中，在所有相关信息旁边的括号中包含引用/URL
+* 只运行爬虫一次
 
-Only output JSON. Follow the JSON schema below. Do not output anything else. I will be parsing this with Pydantic so output valid JSON only:
+仅输出 JSON。遵循以下 JSON 模式。不要输出其他任何内容。我将使用 Pydantic 解析，因此仅输出有效的 JSON：
 {ToolAgentOutput.model_json_schema()}
 """
 

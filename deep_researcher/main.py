@@ -9,30 +9,30 @@ load_dotenv(override=True)
 
 
 async def main() -> None:
-    parser = argparse.ArgumentParser(description="Deep Research Assistant")
-    parser.add_argument("--query", type=str, help="Research query")
+    parser = argparse.ArgumentParser(description="深度研究助手")
+    parser.add_argument("--query", type=str, help="研究查询")
     parser.add_argument("--model", type=str, choices=["deep", "simple"], 
-                        help="Mode of research (deep or simple)", default="deep")
+                        help="研究模式（深度或简单）", default="deep")
     parser.add_argument("--max-iterations", type=int, default=5,
-                       help="Maximum number of iterations for deep research")
+                       help="深度研究的最大迭代次数")
     parser.add_argument("--max-time", type=int, default=10,
-                       help="Maximum time in minutes for deep research")
+                       help="深度研究的最大时间（分钟）")
     parser.add_argument("--output-length", type=str, default="5 pages",
-                       help="Desired output length for the report")
+                       help="报告的期望输出长度")
     parser.add_argument("--output-instructions", type=str, default="",
-                       help="Additional instructions for the report")
+                       help="报告的额外指示")
     parser.add_argument("--verbose", action="store_true",
-                       help="Print status updates to the console")
+                       help="向控制台打印状态更新")
     parser.add_argument("--tracing", action="store_true",
-                       help="Enable tracing for the research (only valid for OpenAI models)")
+                       help="为研究启用跟踪（仅对OpenAI模型有效）")
     
     args = parser.parse_args()
     
-    # If no query is provided via command line, prompt the user
-    query = args.query if args.query else input("What would you like to research? ")
+    # 如果通过命令行未提供查询，则提示用户
+    query = args.query if args.query else input("您想研究什么？ ")
     
-    print(f"Starting deep research on: {query}")
-    print(f"Max iterations: {args.max_iterations}, Max time: {args.max_time} minutes")
+    print(f"开始对以下内容进行深度研究：{query}")
+    print(f"最大迭代次数：{args.max_iterations}，最大时间：{args.max_time} 分钟")
     
     if args.model == "deep":
         manager = DeepResearcher(
@@ -55,12 +55,12 @@ async def main() -> None:
             output_instructions=args.output_instructions
         )
 
-    print("\n=== Final Report ===")
+    print("\n=== 最终报告 ===")
     print(report)
 
-# Command line entry point
+# 命令行入口点
 def cli_entry():
-    """Entry point for the command-line interface."""
+    """命令行界面的入口点。"""
     asyncio.run(main())
 
 if __name__ == "__main__":

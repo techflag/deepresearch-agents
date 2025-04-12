@@ -13,7 +13,7 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 PERPLEXITY_API_KEY = os.getenv("PERPLEXITY_API_KEY")
 HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
-LOCAL_MODEL_URL = os.getenv("LOCAL_MODEL_URL")  # e.g. "http://localhost:11434/v1"
+LOCAL_MODEL_URL = os.getenv("LOCAL_MODEL_URL")  # 例如 "http://localhost:11434/v1"
 
 REASONING_MODEL_PROVIDER=os.getenv("REASONING_MODEL_PROVIDER", "openai")
 REASONING_MODEL=os.getenv("REASONING_MODEL", "o3-mini")
@@ -63,24 +63,24 @@ provider_mapping = {
     "local": {
         "model": OpenAIChatCompletionsModel,
         "base_url": LOCAL_MODEL_URL,
-        "api_key": "ollama",  # Required by OpenAI client but not used
+        "api_key": "ollama",  # OpenAI客户端需要但不使用
     }
 }
 
 if REASONING_MODEL_PROVIDER not in supported_providers:
-    raise ValueError(f"Invalid model provider: {REASONING_MODEL_PROVIDER}")
+    raise ValueError(f"无效的模型提供商: {REASONING_MODEL_PROVIDER}")
 if MAIN_MODEL_PROVIDER not in supported_providers:
-    raise ValueError(f"Invalid model provider: {MAIN_MODEL_PROVIDER}")
+    raise ValueError(f"无效的模型提供商: {MAIN_MODEL_PROVIDER}")
 if FAST_MODEL_PROVIDER not in supported_providers:
-    raise ValueError(f"Invalid model provider: {FAST_MODEL_PROVIDER}")
+    raise ValueError(f"无效的模型提供商: {FAST_MODEL_PROVIDER}")
 
 if OPENAI_API_KEY:
     set_tracing_export_api_key(OPENAI_API_KEY)
 else:
-    # If no OpenAI API key is provided, disable tracing
+    # 如果没有提供OpenAI API密钥，禁用跟踪
     set_tracing_disabled(True)
 
-# ------- SET UP REASONING MODEL -------
+# ------- 设置推理模型 -------
 
 reasoning_client = AsyncOpenAI(
     api_key=provider_mapping[REASONING_MODEL_PROVIDER]["api_key"],
@@ -92,7 +92,7 @@ reasoning_model = provider_mapping[REASONING_MODEL_PROVIDER]["model"](
     openai_client=reasoning_client
 )
 
-# ------- SET UP MAIN MODEL -------
+# ------- 设置主模型 -------
 
 main_client = AsyncOpenAI(
     api_key=provider_mapping[MAIN_MODEL_PROVIDER]["api_key"],
@@ -104,7 +104,7 @@ main_model = provider_mapping[MAIN_MODEL_PROVIDER]["model"](
     openai_client=main_client
 )
 
-# ------- SET UP FAST MODEL -------
+# ------- 设置快速模型 -------
 
 fast_client = AsyncOpenAI(
     api_key=provider_mapping[FAST_MODEL_PROVIDER]["api_key"],
@@ -118,12 +118,12 @@ fast_model = provider_mapping[FAST_MODEL_PROVIDER]["model"](
 
 
 def get_base_url(model: Union[OpenAIChatCompletionsModel, OpenAIResponsesModel]) -> str:
-    """Utility function to get the base URL for a given model"""
+    """获取给定模型的基础URL的实用函数"""
     return str(model._client._base_url)
 
 
 def model_supports_structured_output(model: Union[OpenAIChatCompletionsModel, OpenAIResponsesModel]) -> bool:
-    """Utility function to check if a model supports structured output"""
+    """检查模型是否支持结构化输出的实用函数"""
     structured_output_providers = ["openai.com", "anthropic.com"]
     return any(provider in get_base_url(model) for provider in structured_output_providers)
 

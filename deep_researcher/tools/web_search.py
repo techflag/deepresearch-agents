@@ -13,55 +13,56 @@ from pydantic import BaseModel, Field
 from ..llm_client import fast_model, model_supports_structured_output
 
 load_dotenv()
-CONTENT_LENGTH_LIMIT = 10000  # Trim scraped content to this length to avoid large context / token limit issues
+CONTENT_LENGTH_LIMIT = 10000  # 将爬取的内容修剪到此长度，以避免大型上下文/令牌限制问题
 SEARCH_PROVIDER = os.getenv("SEARCH_PROVIDER", "serper").lower()
 
-# ------- DEFINE TYPES -------
+# ------- 定义类型 -------
 
 class ScrapeResult(BaseModel):
-    url: str = Field(description="The URL of the webpage")
-    text: str = Field(description="The full text content of the webpage")
-    title: str = Field(description="The title of the webpage")
-    description: str = Field(description="A short description of the webpage")
+    url: str = Field(description="网页的URL")
+    text: str = Field(description="网页的完整文本内容")
+    title: str = Field(description="网页的标题")
+    description: str = Field(description="网页的简短描述")
 
 
 class WebpageSnippet(BaseModel):
-    url: str = Field(description="The URL of the webpage")
-    title: str = Field(description="The title of the webpage")
-    description: Optional[str] = Field(description="A short description of the webpage")
+    url: str = Field(description="网页的URL")
+    title: str = Field(description="网页的标题")
+    description: Optional[str] = Field(description="网页的简短描述")
 
 class SearchResults(BaseModel):
     results_list: List[WebpageSnippet]
 
-# ------- DEFINE TOOL -------
+# ------- 定义工具 -------
 
-# Add a module-level variable to store the singleton instance
+# 添加一个模块级变量来存储单例实例
 _serper_client = None
 
 
 @function_tool
 async def web_search(query: str) -> Union[List[ScrapeResult], str]:
-    """Perform a web search for a given query and get back the URLs along with their titles, descriptions and text contents.
+    """对给定查询执行网络搜索，并获取URL及其标题、描述和文本内容。
     
-    Args:
-        query: The search query
+    参数：
+        query: 搜索查询
         
-    Returns:
-        List of ScrapeResult objects which have the following fields:
-            - url: The URL of the search result
-            - title: The title of the search result
-            - description: The description of the search result
-            - text: The full text content of the search result
+    返回：
+        ScrapeResult对象列表，具有以下字段：
+            - url: 搜索结果的URL
+            - title: 搜索结果的标题
+            - description: 搜索结果的描述
+            - text: 搜索结果的完整文本内容
     """
-    # Only use SerperClient if search provider is serper
+    # 仅当搜索提供商为serper时使用SerperClient
     if SEARCH_PROVIDER == "openai":
-        # For OpenAI search provider, this function should not be called directly
-        # The WebSearchTool from the agents module will be used instead
-        return f"The web_search function is not used when SEARCH_PROVIDER is set to 'openai'. Please check your configuration."
+        # 对于OpenAI搜索提供商，不应直接调用此函数
+        # 将使用agents模块中的WebSearchTool
+        return f"当SEARCH_PROVIDER设置为'openai'时，不使用web_search函数。请检查您的配置。"
     else:
         try:
-            # Lazy initialization of SerperClient
+            # SerperClient的延迟初始化
             global _serper_client
+            _log_message(f"执行web_search搜索:{query}")
             if _serper_client is None:
                 _serper_client = SerperClient()
 
@@ -69,20 +70,20 @@ async def web_search(query: str) -> Union[List[ScrapeResult], str]:
             results = await scrape_urls(search_results)
             return results
         except Exception as e:
-            # Return a user-friendly error message
-            return f"Sorry, I encountered an error while searching: {str(e)}"
+            # 返回用户友好的错误消息
+            return f"抱歉，搜索时遇到错误：{str(e)}"
 
 
-# ------- DEFINE AGENT FOR FILTERING SEARCH RESULTS BY RELEVANCE -------
+# ------- 定义用于按相关性过滤搜索结果的代理 -------
 
 FILTER_AGENT_INSTRUCTIONS = f"""
-You are a search result filter. Your task is to analyze a list of SERP search results and determine which ones are relevant
-to the original query based on the link, title and snippet. Return only the relevant results in the specified format. 
+你是一个搜索结果过滤器。你的任务是分析SERP搜索结果列表，并根据链接、标题和摘要确定哪些与原始查询相关。
+仅以指定格式返回相关结果。
 
-- Remove any results that refer to entities that have similar names to the queried entity, but are not the same.
-- E.g. if the query asks about a company "Amce Inc, acme.com", remove results with "acmesolutions.com" or "acme.net" in the link.
+- 删除任何引用与查询实体名称相似但不相同的实体的结果。
+- 例如，如果查询询问公司"Amce Inc, acme.com"，删除链接中包含"acmesolutions.com"或"acme.net"的结果。
 
-Only output JSON. Follow the JSON schema below. Do not output anything else. I will be parsing this with Pydantic so output valid JSON only:
+仅输出JSON。遵循以下JSON模式。不要输出其他任何内容。我将使用Pydantic解析，因此仅输出有效的JSON：
 {SearchResults.model_json_schema()}
 """
 
@@ -96,55 +97,58 @@ filter_agent = ResearchAgent(
     output_parser=create_type_parser(SearchResults) if not model_supports_structured_output(selected_model) else None
 )
 
-# ------- DEFINE UNDERLYING TOOL LOGIC -------
+# ------- 定义底层工具逻辑 -------
 
-# Create a shared connector
+# 创建共享连接器
 ssl_context = ssl.create_default_context()
 ssl_context.check_hostname = False
 ssl_context.verify_mode = ssl.CERT_NONE
-ssl_context.set_ciphers('DEFAULT:@SECLEVEL=1')  # Add this line to allow older cipher suites
+ssl_context.set_ciphers('DEFAULT:@SECLEVEL=1')  # 添加此行以允许较旧的密码套件
 
 
 class SerperClient:
-    """A client for the Serper API to perform Google searches."""
+    """Serper API的客户端，用于执行Google搜索。"""
 
     def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv("SERPER_API_KEY")
         if not self.api_key:
-            raise ValueError("No API key provided. Set SERPER_API_KEY environment variable.")
+            raise ValueError("未提供API密钥。设置SERPER_API_KEY环境变量。")
         
-        self.url = "https://google.serper.dev/search"
+        self.url = "https://api.bochaai.com/v1/web-search"
         self.headers = {
-            "X-API-KEY": self.api_key,
+            "Authorization": "Bearer " + self.api_key,
             "Content-Type": "application/json"
         }
 
+        _log_message(f"SerperClient初始化完成:{self.headers}")
+
     async def search(self, query: str, filter_for_relevance: bool = True, max_results: int = 5) -> List[WebpageSnippet]:
-        """Perform a Google search using Serper API and fetch basic details for top results.
+        """使用Serper API执行Google搜索并获取顶部结果的基本详细信息。
         
-        Args:
-            query: The search query
-            num_results: Maximum number of results to return (max 10)
+        参数：
+            query: 搜索查询
+            num_results: 返回的最大结果数（最多10个）
             
-        Returns:
-            Dictionary with search results
+        返回：
+            包含搜索结果的字典
         """
+        _log_message(f"执行search搜索：{query}")
         connector = aiohttp.TCPConnector(ssl=ssl_context)
         async with aiohttp.ClientSession(connector=connector) as session:
             async with session.post(
                 self.url,
                 headers=self.headers,
-                json={"q": query, "autocorrect": False}
+                json={"query": query, "summary": True}
             ) as response:
                 response.raise_for_status()
                 results = await response.json()
                 results_list = [
                     WebpageSnippet(
-                        url=result.get('link', ''),
-                        title=result.get('title', ''),
+                        url=result.get('url', ''),
+                        title=result.get('name', ''),
                         description=result.get('snippet', '')
                     )
-                    for result in results.get('organic', [])
+                    for result in results["data"]["webPages"]["value"]
                 ]
                 
         if not results_list:
@@ -159,71 +163,71 @@ class SerperClient:
         serialized_results = [result.model_dump() if isinstance(result, WebpageSnippet) else result for result in results]
         
         user_prompt = f"""
-        Original search query: {query}
+        原始搜索查询: {query}
         
-        Search results to analyze:
+        要分析的搜索结果:
         {json.dumps(serialized_results, indent=2)}
         
-        Return {max_results} search results or less.
+        返回{max_results}个或更少的搜索结果。
         """
-        
+        _log_message(f"过滤搜索结果：{user_prompt}")
         try:
             result = await ResearchRunner.run(filter_agent, user_prompt)
             output = result.final_output_as(SearchResults)
             return output.results_list
         except Exception as e:
-            print("Error filtering results:", str(e))
+            print("过滤结果时出错:", str(e))
             return results[:max_results]
 
 
 async def scrape_urls(items: List[WebpageSnippet]) -> List[ScrapeResult]:
-    """Fetch text content from provided URLs.
+    """从提供的URL获取文本内容。
     
-    Args:
-        items: List of SearchEngineResult items to extract content from
+    参数：
+        items: 要提取内容的SearchEngineResult项目列表
         
-    Returns:
-        List of ScrapeResult objects which have the following fields:
-            - url: The URL of the search result
-            - title: The title of the search result
-            - description: The description of the search result
-            - text: The full text content of the search result
+    返回：
+        ScrapeResult对象列表，具有以下字段：
+            - url: 搜索结果的URL
+            - title: 搜索结果的标题
+            - description: 搜索结果的描述
+            - text: 搜索结果的完整文本内容
     """
     connector = aiohttp.TCPConnector(ssl=ssl_context)
     async with aiohttp.ClientSession(connector=connector) as session:
-        # Create list of tasks for concurrent execution
+        # 创建任务列表以进行并发执行
         tasks = []
         for item in items:
-            if item.url:  # Skip empty URLs
+            if item.url:  # 跳过空URL
                 tasks.append(fetch_and_process_url(session, item))
                 
-        # Execute all tasks concurrently and gather results
+        # 并发执行所有任务并收集结果
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
-        # Filter out errors and return successful results
+        # 过滤掉错误并返回成功的结果
         return [r for r in results if isinstance(r, ScrapeResult)]
 
 
 async def fetch_and_process_url(session: aiohttp.ClientSession, item: WebpageSnippet) -> ScrapeResult:
-    """Helper function to fetch and process a single URL."""
+    """获取和处理单个URL的辅助函数。"""
 
     if not is_valid_url(item.url):
         return ScrapeResult(
             url=item.url,
             title=item.title,
             description=item.description,
-            text=f"Error fetching content: URL contains restricted file extension"
+            text=f"获取内容时出错：URL包含受限文件扩展名"
         )
 
     try:
         async with session.get(item.url, timeout=8) as response:
             if response.status == 200:
                 content = await response.text()
-                # Run html_to_text in a thread pool to avoid blocking
+                # 在线程池中运行html_to_text以避免阻塞
                 text_content = await asyncio.get_event_loop().run_in_executor(
                     None, html_to_text, content
                 )
-                text_content = text_content[:CONTENT_LENGTH_LIMIT]  # Trim content to avoid exceeding token limit
+                text_content = text_content[:CONTENT_LENGTH_LIMIT]  # 修剪内容以避免超过令牌限制
                 return ScrapeResult(
                     url=item.url,
                     title=item.title,
@@ -231,41 +235,41 @@ async def fetch_and_process_url(session: aiohttp.ClientSession, item: WebpageSni
                     text=text_content
                 )
             else:
-                # Instead of raising, return a WebSearchResult with an error message
+                # 不抛出异常，而是返回带有错误消息的WebSearchResult
                 return ScrapeResult(
                     url=item.url,
                     title=item.title,
                     description=item.description,
-                    text=f"Error fetching content: HTTP {response.status}"
+                    text=f"获取内容时出错：HTTP {response.status}"
                 )
     except Exception as e:
-        # Instead of raising, return a WebSearchResult with an error message
+        # 不抛出异常，而是返回带有错误消息的WebSearchResult
         return ScrapeResult(
             url=item.url,
             title=item.title,
             description=item.description,
-            text=f"Error fetching content: {str(e)}"
+            text=f"获取内容时出错：{str(e)}"
         )
 
 
 def html_to_text(html_content: str) -> str:
     """
-    Strips out all of the unnecessary elements from the HTML context to prepare it for text extraction / LLM processing.
+    从HTML上下文中剥离所有不必要的元素，为文本提取/LLM处理做准备。
     """
-    # Parse the HTML using lxml for speed
+    # 使用lxml解析HTML以提高速度
     soup = BeautifulSoup(html_content, 'lxml')
 
-    # Extract text from relevant tags
+    # 从相关标签中提取文本
     tags_to_extract = ('h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'li', 'blockquote')
 
-    # Use a generator expression for efficiency
+    # 使用生成器表达式以提高效率
     extracted_text = "\n".join(element.get_text(strip=True) for element in soup.find_all(tags_to_extract) if element.get_text(strip=True))
 
     return extracted_text
 
 
 def is_valid_url(url: str) -> bool:
-    """Check that a URL does not contain restricted file extensions."""
+    """检查URL是否不包含受限文件扩展名。"""
     if any(ext in url for ext in [
         ".pdf", 
         ".doc", 
@@ -301,3 +305,11 @@ def is_valid_url(url: str) -> bool:
     ]):
         return False
     return True
+
+def _log_message(message: str) -> None:
+    try:
+        # 尝试直接打印
+        print(message)
+    except UnicodeEncodeError:
+        # 如果遇到编码错误，使用repr转义Unicode字符
+        print(repr(message))

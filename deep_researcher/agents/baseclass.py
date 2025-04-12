@@ -5,12 +5,11 @@ from agents.run_context import TContext
 
 class ResearchAgent(Agent[TContext]):
     """
-    This is a custom implementation of the OpenAI Agent class that supports output parsing
-    for models that don't support structured output types. The user can specify an output_parser
-    function that will be called with the raw output from the agent. This can run custom logic 
-    such as cleaning up the output and converting it to a structured JSON object.
+    这是 OpenAI Agent 类的自定义实现，支持为不支持结构化输出类型的模型进行输出解析。
+    用户可以指定一个 output_parser 函数，该函数将使用代理的原始输出进行调用。
+    这可以运行自定义逻辑，例如清理输出并将其转换为结构化的 JSON 对象。
 
-    Needs to be run with the ResearchRunner to work.
+    需要与 ResearchRunner 一起运行才能工作。
     """
     
     def __init__(
@@ -19,20 +18,20 @@ class ResearchAgent(Agent[TContext]):
         output_parser: Optional[Callable[[str], Any]] = None,
         **kwargs
     ):
-        # The output_parser is a function that only takes effect if output_type is not specified
+        # output_parser是一个函数，仅在未指定output_type时生效
         self.output_parser = output_parser
 
-        # If both are specified, we raise an error - they can't be used together
+        # 如果两者都指定，我们会引发错误 - 它们不能一起使用
         if self.output_parser and kwargs.get('output_type'):
-            raise ValueError("Cannot specify both output_parser and output_type")
+            raise ValueError("不能同时指定output_parser和output_type")
             
         super().__init__(*args, **kwargs)
     
 
     async def parse_output(self, run_result: RunResult) -> RunResult:
         """
-        Process the RunResult by applying the output_parser to its final_output if specified.
-        This preserves the RunResult structure while modifying its content.
+        通过将output_parser应用于其final_output（如果指定）来处理RunResult。
+        这保留了RunResult结构，同时修改其内容。
         """
         if self.output_parser:
             raw_output = run_result.final_output            
@@ -43,24 +42,23 @@ class ResearchAgent(Agent[TContext]):
 
 class ResearchRunner(Runner):
     """
-    Custom implementation of the OpenAI Runner class that supports output parsing
-    for models that don't support structured output types with tools. 
+    OpenAI Runner类的自定义实现，支持为不支持带工具的结构化输出类型的模型进行输出解析。
     
-    Needs to be run with the ResearchAgent class.
+    需要与ResearchAgent类一起运行。
     """
     
     @classmethod
     async def run(cls, *args, **kwargs) -> RunResult:
         """
-        Run the agent and process its output with the custom parser if applicable.
+        运行代理并在适用的情况下使用自定义解析器处理其输出。
         """
-        # Call the original run method
+        # 调用原始run方法
         result = await Runner.run(*args, **kwargs)
         
-        # Get the starting agent
+        # 获取起始代理
         starting_agent = kwargs.get('starting_agent') or args[0]
         
-        # If the starting agent is of type ResearchAgent, parse the output
+        # 如果起始代理是ResearchAgent类型，解析输出
         if isinstance(starting_agent, ResearchAgent):
             return await starting_agent.parse_output(result)
         

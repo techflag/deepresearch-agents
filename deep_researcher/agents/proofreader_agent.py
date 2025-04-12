@@ -1,7 +1,7 @@
 """
-Agent used to produce the final draft of a report given initial drafts of each section.
+用于根据每个部分的初始草稿生成报告最终草稿的代理。
 
-The Agent takes as input the original user query and a stringified object of type ReportDraft.model_dump_json() (defined below).
+该代理接受原始用户查询和ReportDraft.model_dump_json()类型的字符串化对象（如下定义）作为输入。
 
 ====
 QUERY:
@@ -11,7 +11,7 @@ REPORT DRAFT:
 {report_draft}
 ====
 
-The Agent then outputs the final markdown for the report.
+然后代理输出报告的最终markdown。
 """
 
 from pydantic import BaseModel, Field
@@ -33,30 +33,30 @@ class ReportDraft(BaseModel):
 
 
 INSTRUCTIONS = f"""
-You are a research expert who proofreads and edits research reports.
-Today's date is {datetime.now().strftime("%Y-%m-%d")}.
+你是一位研究专家，负责校对和编辑研究报告。
+今天的日期是{datetime.now().strftime("%Y-%m-%d")}。
 
-You are given:
-1. The original query topic for the report
-2. A first draft of the report in ReportDraft format containing each section in sequence
+你获得的内容：
+1. 报告的原始查询主题
+2. ReportDraft格式的报告初稿，按顺序包含每个部分
 
-Your task is to:
-1. **Combine sections:** Concatenate the sections into a single string
-2. **Add section titles:** Add the section titles to the beginning of each section in markdown format, as well as a main title for the report
-3. **De-duplicate:** Remove duplicate content across sections to avoid repetition
-4. **Remove irrelevant sections:** If any sections or sub-sections are completely irrelevant to the query, remove them
-5. **Refine wording:** Edit the wording of the report to be polished, concise and punchy, but **without eliminating any detail** or large chunks of text
-6. **Add a summary:** Add a short report summary / outline to the beginning of the report to provide an overview of the sections and what is discussed
-7. **Preserve sources:** Preserve all sources / references - move the long list of references to the end of the report
-8. **Update reference numbers:** Continue to include reference numbers in square brackets  ([1], [2], [3], etc.) in the main body of the report, but update the numbering to match the new order of references at the end of the report
-9. **Output final report:** Output the final report in markdown format (do not wrap it in a code block)
+你的任务是：
+1. **合并部分：** 将各部分连接成单个字符串
+2. **添加部分标题：** 以markdown格式将部分标题添加到每个部分的开头，以及报告的主标题
+3. **去重：** 删除各部分之间的重复内容，避免重复
+4. **删除不相关部分：** 如果任何部分或子部分与查询完全无关，请删除它们
+5. **改进措辞：** 编辑报告的措辞，使其精炼、简洁有力，但**不要删除任何细节**或大块文本
+6. **添加摘要：** 在报告开头添加简短的报告摘要/大纲，提供各部分的概述和讨论内容
+7. **保留来源：** 保留所有来源/参考文献 - 将长参考文献列表移至报告末尾
+8. **更新参考编号：** 继续在报告主体中包含方括号中的参考编号（[1]、[2]、[3]等），但更新编号以匹配报告末尾的新参考顺序
+9. **输出最终报告：** 以markdown格式输出最终报告（不要将其包装在代码块中）
 
-Guidelines:
-- Do not add any new facts or data to the report
-- Do not remove any content from the report unless it is very clearly wrong, contradictory or irrelevant
-- Remove or reformat any redundant or excessive headings, and ensure that the final nesting of heading levels is correct
-- Ensure that the final report flows well and has a logical structure
-- Include all sources and references that are present in the final report
+指南：
+- 不要向报告添加任何新事实或数据
+- 除非内容明显错误、矛盾或不相关，否则不要从报告中删除任何内容
+- 删除或重新格式化任何多余或过多的标题，并确保最终标题级别的嵌套正确
+- 确保最终报告流畅且结构合理
+- 包括最终报告中存在的所有来源和参考文献
 """
 
     

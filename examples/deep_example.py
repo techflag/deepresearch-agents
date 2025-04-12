@@ -14,11 +14,10 @@ manager = DeepResearcher(
     max_iterations=3,
     max_time_minutes=10,
     verbose=True,
-    tracing=True
+    tracing=False
 )
 
-query = "Write a report on Plato - who was he, what were his main works " \
-        "and what are the main philosophical ideas he's known for"
+query = "锦创书城互联网传播分析 - 如何提高网站的曝光度和转化率？ - 如何优化网站的用户体验？"
 
 report = asyncio.run(
     manager.run(
