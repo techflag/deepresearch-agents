@@ -126,7 +126,8 @@ class IterativeResearcher:
         max_iterations: int = 5,
         max_time_minutes: int = 10,
         verbose: bool = True,
-        tracing: bool = False
+        tracing: bool = False,
+        websocket = None  # 添加 websocket 参数
     ):
         self.max_iterations: int = max_iterations
         self.max_time_minutes: int = max_time_minutes
@@ -136,6 +137,7 @@ class IterativeResearcher:
         self.should_continue: bool = True
         self.verbose: bool = verbose
         self.tracing: bool = tracing
+        self.websocket = websocket  # 保存 websocket 实例
         
     async def run(
             self, 
@@ -153,12 +155,12 @@ class IterativeResearcher:
             print(f"查看跟踪：https://platform.openai.com/traces/trace?trace_id={trace_id}")
             workflow_trace.start(mark_as_current=True)
 
-        self._log_message("=== 开始迭代研究工作流 ===")
+        await self._log_message("=== 开始迭代研究工作流 ===")
         
         # 迭代研究循环
         while self.should_continue and self._check_constraints():
             self.iteration += 1
-            self._log_message(f"\n=== 开始迭代 {self.iteration} ===")
+            await self._log_message(f"\n=== 开始迭代 {self.iteration} ===")
 
             # 为此迭代设置空白的 IterationData
             self.conversation.add_iteration()
@@ -180,13 +182,13 @@ class IterativeResearcher:
                 results: Dict[str, ToolAgentOutput] = await self._execute_tools(selection_plan.tasks)
             else:
                 self.should_continue = False
-                self._log_message("=== 迭代研究者标记为完成 - 正在完成输出 ===")
+                await self._log_message("=== 迭代研究者标记为完成 - 正在完成输出 ===")
         
         # 创建最终报告
         report = await self._create_final_report(query, length=output_length, instructions=output_instructions)
         
         elapsed_time = time.time() - self.start_time
-        self._log_message(f"迭代研究者在 {int(elapsed_time // 60)} 分钟和 {int(elapsed_time % 60)} 秒后完成，经过 {self.iteration} 次迭代。")
+        await self._log_message(f"迭代研究者在 {int(elapsed_time // 60)} 分钟和 {int(elapsed_time % 60)} 秒后完成，经过 {self.iteration} 次迭代。")
         
         if self.tracing:
             workflow_trace.finish(reset_current=True)
@@ -229,7 +231,7 @@ class IterativeResearcher:
         行动、发现和思考的历史：
         {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}        
         """
-        self._log_message(f"\n=== _evaluate_gaps ==={input_str}")
+        await self._log_message(f"\n=== _evaluate_gaps ==={input_str}")
         result = await ResearchRunner.run(
             knowledge_gap_agent,
             input_str,
@@ -238,7 +240,7 @@ class IterativeResearcher:
         try:
             evaluation = result.final_output_as(KnowledgeGapOutput)
         except Exception as e:
-            self._log_message(f"知识差距评估解析错误: {str(e)}")
+            await self._log_message(f"知识差距评估解析错误: {str(e)}")
             evaluation = KnowledgeGapOutput(
                 research_complete=False,
                 outstanding_gaps=["无法解析知识差距评估结果"]
@@ -247,7 +249,7 @@ class IterativeResearcher:
         if not evaluation.research_complete:
             next_gap = evaluation.outstanding_gaps[0]
             self.conversation.set_latest_gap(next_gap)
-            self._log_message(self.conversation.latest_task_string())
+            await self._log_message(self.conversation.latest_task_string())
         
         return evaluation
     
@@ -273,7 +275,7 @@ class IterativeResearcher:
         行动、发现和思考的历史：
         {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}
         """
-        self._log_message(f"\n=== 选择代理以解决知识差距：{gap} ===")
+        await self._log_message(f"\n=== 选择代理以解决知识差距：{gap} ===")
         result = await ResearchRunner.run(
             tool_selector_agent,
             input_str,
@@ -285,7 +287,7 @@ class IterativeResearcher:
         self.conversation.set_latest_tool_calls([
             f"[代理] {task.agent} [查询] {task.query} [实体] {task.entity_website if task.entity_website else 'null'}" for task in selection_plan.tasks
         ])
-        self._log_message(self.conversation.latest_action_string())
+        await self._log_message(self.conversation.latest_action_string())
         
         return selection_plan
     
@@ -304,7 +306,7 @@ class IterativeResearcher:
                 gap, agent_name, result = await future
                 results[f"{agent_name}_{gap}"] = result
                 num_completed += 1
-                self._log_message(f"<processing>\n工具执行进度：{num_completed}/{len(async_tasks)}\n</processing>")
+                await self._log_message(f"<processing>\n工具执行进度：{num_completed}/{len(async_tasks)}\n</processing>")
 
             # 将工具输出的发现添加到对话中
             findings = []
@@ -362,7 +364,7 @@ class IterativeResearcher:
         # 将观察添加到对话中
         observations = result.final_output
         self.conversation.set_latest_thought(observations)
-        self._log_message(self.conversation.latest_thought_string())
+        await self._log_message(self.conversation.latest_thought_string())
         return observations
 
     async def _create_final_report(
@@ -372,7 +374,7 @@ class IterativeResearcher:
         instructions: str = ""
         ) -> str:
         """从完成的草稿创建最终响应。"""
-        self._log_message("=== 起草最终响应 ===")
+        await self._log_message("=== 起草最终响应 ===")
 
         length_str = f"* 完整响应应约为 {length}。\n" if length else ""
         instructions_str = f"* {instructions}" if instructions else ""
@@ -394,11 +396,39 @@ class IterativeResearcher:
             input_str,
         )
         
-        self._log_message("迭代研究者成功创建最终响应")
+        await self._log_message("迭代研究者成功创建最终响应")
         
         return result.final_output
     
-    def _log_message(self, message: str) -> None:
-        """如果 verbose 为 True，则记录消息"""
+    async def _log_message(self, message: str) -> None:
+        """增强日志功能，支持解析特定标记并通过 WebSocket 发送"""
+        if self.websocket:
+            # 解析不同类型的消息
+            if message.startswith("<task>"):
+                event_type = "task"
+                content = message[6:-7]  # 移除 <task> 和 </task>
+            elif message.startswith("<action>"):
+                event_type = "action"
+                content = message[8:-9]  # 移除 <action> 和 </action>
+            elif message.startswith("<findings>"):
+                event_type = "findings"
+                content = message[10:-11]  # 移除 <findings> 和 </findings>
+            elif message.startswith("<thought>"):
+                event_type = "thought"
+                content = message[9:-10]  # 移除 <thought> 和 </thought>
+            elif message.startswith("<processing>"):
+                event_type = "processing"
+                content = message[12:-13]  # 移除 <processing> 和 </processing>
+            else:
+                event_type = "info"
+                content = message
+
+            await self.websocket.send_json({
+                "type": event_type,
+                "content": content,
+                "timestamp": time.time(),
+                "iteration": self.iteration
+            })
+
         if self.verbose:
             print(message)

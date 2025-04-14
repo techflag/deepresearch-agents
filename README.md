@@ -1,73 +1,64 @@
-<div align="center">
 
-[![GitHub Stars](https://img.shields.io/github/stars/qx-labs/agents-deep-research?style=social)](https://github.com/qx-labs/agents-deep-research/stargazers)
-[![GitHub Forks](https://img.shields.io/github/forks/qx-labs/agents-deep-research?style=social)](https://github.com/qx-labs/agents-deep-research/network/members)
 
-[![PyPI version](https://badge.fury.io/py/deep-researcher.svg)](https://pypi.org/project/deep-researcher/)
-[![License](https://img.shields.io/github/license/qx-labs/agents-deep-research)](https://github.com/qx-labs/agents-deep-research/blob/main/LICENSE)
-[![PyPI Downloads](https://static.pepy.tech/badge/deep-researcher)](https://pepy.tech/projects/deep-researcher)
+# 使用 OpenAI Agents SDK 的智能深度研究
 
-</div>
+这是一个使用 [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) 构建的强大深度研究助手，旨在对任何给定主题进行深入研究。兼容 OpenAI、Anthropic、Gemini、DeepSeek、Perplexity、OpenRouter、Hugging Face 以及 Ollama 等本地模型。
 
-# Agentic Deep Research using the OpenAI Agents SDK
+它采用多智能体架构，通过迭代方式工作，不断完善对主题的理解，产生越来越详细的见解，最终形成最终报告。
 
-A powerful deep research assistant built using the [OpenAI Agents SDK](https://github.com/openai/openai-agents-python), designed to perform in-depth research on any given topic. Compatible with OpenAI, Anthropic, Gemini, DeepSeek, Perplexity, OpenRouter, Hugging Face and local models such as Ollama.
+该项目设计为可扩展的，可以使用自定义工具和任何其他与 OpenAI API 规范兼容的第三方 LLM。LLM 和工具调用可以选择使用 OpenAI 的追踪功能进行追踪。
 
-It uses a multi-agent architecture that works iteratively, continually refining its understanding of a topic and producing increasingly detailed insights that feed the final report.
+相关背景阅读请参考[这里](https://www.j2.gg/thoughts/deep-research-how-it-works)。
 
-Designed to be extendable to use custom tools and any other 3rd party LLMs compatible with the OpenAI API spec. LLM and tool calls can be optionally traced using OpenAI's tracing feature.
+## 概述
 
-Some background reading [here](https://www.j2.gg/thoughts/deep-research-how-it-works).
+该软件包有两种研究模式：
 
-## Overview
+- `IterativeResearcher`（迭代研究者）：对某个主题或子主题进行持续循环研究并起草报告
+  - 这是首选方案，适用于较短的报告（最多 5 页/1,000 字）
+  - 用户可以指定研究深度、时间限制、报告长度和格式要求等约束条件
+- `DeepResearcher`（深度研究者）：运行更全面和结构化的流程，首先形成报告大纲，然后为报告的每个部分并行运行 `IterativeResearcher` 实例
+  - 这适用于较长的报告（如 20+ 页）
 
-This package has two modes of research:
+`DeepResearcher` 的工作流程如下：
 
-- An `IterativeResearcher` which runs a continuous loop of research on a topic or sub-topic and drafts a report
-  - This is preferred and sufficient for shorter reports (up to 5 pages / 1,000 words)
-  - The user can specify constraints such as research depth, time limits, report length and formatting instructions
-- A `DeepResearcher` which runs a more thorough and structured process, first forming a report outline, and then running concurrent `IterativeResearcher` instances for each section of the report
-  - This is useful for longer reports (e.g. 20+ pages)
+1. 接收研究主题并进行初步研究，形成报告大纲/计划
+2. 对报告计划的每个部分，并行运行 `IterativeResearcher` 实例，它会：
+   1. 识别当前研究中的知识空白
+   2. 战略性地选择合适的工具来填补这些空白
+   3. 通过专门的智能体执行研究行动
+   4. 将发现综合成一个全面的章节
+3. 将所有章节编译成一份连贯且结构良好的报告
 
-The flow of the `DeepResearcher` is as follows:
+值得注意的是，深度研究智能体在开始时不会提出澄清性问题，因此可以自动化使用。
 
-1. Takes a research topic and conducts preliminary research to form a report outline / plan
-2. For each section of the report plan, runs parallel instances of the `IterativeResearcher`, which:
-   1. Identifies knowledge gaps in the current research
-   2. Strategically selects the appropriate tools to fill those gaps
-   3. Executes research actions through specialized agents
-   4. Synthesizes findings into a comprehensive section
-3. Compiles all of the sections into a coherent and well-structured report
+## 示例输出
 
-It is worth noting that the deep research agent does not ask clarifying questions at the start, so can be used in an automated fashion.
+深度研究示例（使用 DeepResearcher）：
+- [柏拉图的生平与著作](examples/sample_output/plato.md) - 7,980 字
+- [量子计算教科书](examples/sample_output/quantum_computing.md) - 5,253 字
+- [特斯拉深度研究](examples/sample_output/tesla.md) - 4,732 字
 
-## Sample Output
+简单研究示例（使用 IterativeResearcher）：
+- [Quantera 市场规模](examples/sample_output/quantera_market_size.md) - 1,001 字
+- [英国政府政策](examples/sample_output/labour_policies.md) - 1,077 字
 
-Deep Research Examples (using DeepResearcher):
-- [Life and Works of Plato](examples/sample_output/plato.md) - 7,980 words
-- [Text Book on Quantum Computing](examples/sample_output/quantum_computing.md) - 5,253 words
-- [Deep-Dive on Tesla](examples/sample_output/tesla.md) - 4,732 words
+## 流程图
 
-Simple Research Examples (using IterativeResearcher):
-- [Quantera Market Size](examples/sample_output/quantera_market_size.md) - 1,001 words
-- [UK Government Policies](examples/sample_output/labour_policies.md) - 1,077 words
-
-## Flow Diagram
-
-### IterativeResearcher Flow
+### IterativeResearcher 流程
 
 ```mermaid
 flowchart LR
-    A["User Input<br>- query<br>- max_iterations<br>- max_time<br>- output_instructions"] --> B
+    A["用户输入<br>- 查询<br>- 最大迭代次数<br>- 最大时间<br>- 输出指令"] --> B
 
-    subgraph "Deep Research Loop"
-        B["Knowledge<br>Gap Agent"] -->|"Current gaps<br>& objective"| C["Tool Selector<br>Agent"]
-        C -->|"Tool queries<br>(run in parallel)"| D["Tool Agents<br>- Web Search<br>- Crawler<br>- Custom tools"]
-        D -->|"New findings"| E["Observations<br>Agent"]
-        E --> |"Thoughts on findings<br>and research strategy"| B
+    subgraph "深度研究循环"
+        B["知识空白<br>智能体"] -->|"当前空白<br>和目标"| C["工具选择<br>智能体"]
+        C -->|"工具查询<br>(并行运行)"| D["工具智能体<br>- 网络搜索<br>- 爬虫<br>- 自定义工具"]
+        D -->|"新发现"| E["观察<br>智能体"]
+        E --> |"对发现的思考<br>和研究策略"| B
     end
 
-    E --> F["Writer Agent<br>(final output<br>with references)"]
+    E --> F["写作智能体<br>(带参考文献的<br>最终输出)"]
 ```
 
 ### DeepResearcher Flow

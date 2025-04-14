@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>研究进度实时追踪</title>
+    <style>
+        .research-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            padding: 20px;
+        }
+        .panel {
+            border: 1px solid #eee;
+            border-radius: 8px;
+            padding: 15px;
+            min-height: 200px;
+            background: white;
+        }
+        .panel-header {
+            font-weight: bold;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #eee;
+        }
+        .content {
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+        }
+        .progress-bar {
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.3s ease;
+        }
+        .message {
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .timestamp {
+            color: #666;
+            font-size: 0.8em;
+        }
+    </style>
+</head>
+<body>
+    <div class="research-container">
+        <div class="panel" id="task-panel">
+            <div class="panel-header">当前任务</div>
+            <div class="content" id="task-content"></div>
+        </div>
+        <div class="panel" id="action-panel">
+            <div class="panel-header">执行动作</div>
+            <div class="content" id="action-content"></div>
+        </div>
+        <div class="panel" id="findings-panel">
+            <div class="panel-header">研究发现</div>
+            <div class="content" id="findings-content"></div>
+        </div>
+        <div class="panel" id="thought-panel">
+            <div class="panel-header">思考过程</div>
+            <div class="content" id="thought-content"></div>
+        </div>
+    </div>
+    <div class="panel">
+        <div class="panel-header">处理进度</div>
+        <div class="progress-bar">
+            <div class="progress-fill" id="progress-bar"></div>
+        </div>
+        <div id="progress-text"></div>
+    </div>
+
+    <script>
+        let ws = new WebSocket('ws://localhost:8000/ws/research');
+        
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+            const timestamp = new Date().toLocaleTimeString();
+            
+            switch(data.type) {
+                case 'task':
+                    appendMessage('task-content', data.content, timestamp);
+                    break;
+                case 'action':
+                    appendMessage('action-content', data.content, timestamp);
+                    break;
+                case 'findings':
+                    appendMessage('findings-content', data.content, timestamp);
+                    break;
+                case 'thought':
+                    appendMessage('thought-content', data.content, timestamp);
+                    break;
+                case 'processing':
+                    updateProgress(data.content);
+                    break;
+            }
+        };
+
+        function appendMessage(containerId, content, timestamp) {
+            const container = document.getElementById(containerId);
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message';
+            messageDiv.innerHTML = `
+                <div class="timestamp">${timestamp}</div>
+                <div class="content">${content}</div>
+            `;
+            container.appendChild(messageDiv);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateProgress(content) {
+            // 解析进度信息，例如："工具执行进度：2/5"
+            const match = content.match(/(\d+)\/(\d+)/);
+            if (match) {
+                const [current, total] = [parseInt(match[1]), parseInt(match[2])];
+                const percentage = (current / total) * 100;
+                
+                document.getElementById('progress-bar').style.width = `${percentage}%`;
+                document.getElementById('progress-text').textContent = 
+                    `进度：${current}/${total} (${percentage.toFixed(1)}%)`;
+            }
+        }
+    </script>
+</body>
+</html>
