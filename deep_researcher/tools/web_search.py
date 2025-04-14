@@ -11,6 +11,7 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from ..llm_client import fast_model, model_supports_structured_output
+from ..sse_manager import SSEManager
 
 load_dotenv()
 CONTENT_LENGTH_LIMIT = 10000  # 将爬取的内容修剪到此长度，以避免大型上下文/令牌限制问题
@@ -40,7 +41,7 @@ _serper_client = None
 
 
 @function_tool
-async def web_search(query: str) -> Union[List[ScrapeResult], str]:
+async def web_search(query: str ,client_id: str = "default") -> Union[List[ScrapeResult], str]:
     """对给定查询执行网络搜索，并获取URL及其标题、描述和文本内容。
     
     参数：
@@ -64,7 +65,7 @@ async def web_search(query: str) -> Union[List[ScrapeResult], str]:
             global _serper_client
             _log_message(f"执行web_search搜索:{query}")
             if _serper_client is None:
-                _serper_client = SerperClient()
+                _serper_client = SerperClient(client_id=client_id)
 
             search_results = await _serper_client.search(query, filter_for_relevance=True, max_results=5)
             results = await scrape_urls(search_results)
@@ -109,8 +110,9 @@ ssl_context.set_ciphers('DEFAULT:@SECLEVEL=1')  # 添加此行以允许较旧的
 class SerperClient:
     """Serper API的客户端，用于执行Google搜索。"""
 
-    def __init__(self, api_key: str = None):
+    def __init__(self, api_key: str = None, client_id: str = "default"):
         self.api_key = api_key or os.getenv("SERPER_API_KEY")
+        self.client_id = client_id
         if not self.api_key:
             raise ValueError("未提供API密钥。设置SERPER_API_KEY环境变量。")
         
@@ -133,6 +135,7 @@ class SerperClient:
             包含搜索结果的字典
         """
         _log_message(f"执行search搜索：{query}")
+        _log_message(f"<search> 执行搜索：{query}</search>",self.client_id)
         connector = aiohttp.TCPConnector(ssl=ssl_context)
         async with aiohttp.ClientSession(connector=connector) as session:
             async with session.post(
@@ -170,7 +173,7 @@ class SerperClient:
         
         返回{max_results}个或更少的搜索结果。
         """
-        _log_message(f"过滤搜索结果：{user_prompt}")
+        _log_message(f"<filter>\n过滤搜索结果：{user_prompt}\n</filter>",self.client_id)
         try:
             result = await ResearchRunner.run(filter_agent, user_prompt)
             output = result.final_output_as(SearchResults)
@@ -306,10 +309,50 @@ def is_valid_url(url: str) -> bool:
         return False
     return True
 
-def _log_message(message: str) -> None:
+def _log_message(message: str, client_id: str = "default") -> None:
+    """增强日志功能，支持结构化消息和SSE发送
+    
+    参数:
+        message: 日志消息，支持以下格式:
+            - <search>内容</search>
+            - <filter>内容</filter>
+            - <scrape>内容</scrape>
+            - <error>内容</error>
+            - 普通文本消息
+        client_id: SSE客户端ID
+    """
     try:
         # 尝试直接打印
         print(message)
+        
+        # 解析不同类型的消息
+        if message.startswith("<search>"):
+            event_type = "search"
+            content = message[8:-9]  # 移除<search>和</search>
+        elif message.startswith("<filter>"):
+            event_type = "filter"
+            content = message[8:-9]  # 移除<filter>和</filter>
+        elif message.startswith("<scrape>"):
+            event_type = "scrape"
+            content = message[8:-9]  # 移除<scrape>和</scrape>
+        elif message.startswith("<error>"):
+            event_type = "error"
+            content = message[7:-8]  # 移除<error>和</error>
+        else:
+            event_type = "info"
+            content = message
+
+        # 通过SSE发送结构化消息
+        try:
+            # 由于_log_message不是异步函数，这里直接调用SSEManager.publish而不使用await
+            SSEManager.publish(client_id, event_type, {
+                "content": content,
+                "timestamp": time.time(),
+                "raw_message": message
+            })
+        except Exception as e:
+            print(f"SSE发送失败: {str(e)}")
+            
     except UnicodeEncodeError:
         # 如果遇到编码错误，使用repr转义Unicode字符
         print(repr(message))

@@ -1,5 +1,9 @@
 
 
+
+启动：uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
+
+
 # 使用 OpenAI Agents SDK 的智能深度研究
 
 这是一个使用 [OpenAI Agents SDK](https://github.com/openai/openai-agents-python) 构建的强大深度研究助手，旨在对任何给定主题进行深入研究。兼容 OpenAI、Anthropic、Gemini、DeepSeek、Perplexity、OpenRouter、Hugging Face 以及 Ollama 等本地模型。

@@ -127,7 +127,7 @@ class IterativeResearcher:
         max_time_minutes: int = 10,
         verbose: bool = True,
         tracing: bool = False,
-        websocket = None  # 添加 websocket 参数
+        client_id: str = "default"  # 替换websocket参数为client_id
     ):
         self.max_iterations: int = max_iterations
         self.max_time_minutes: int = max_time_minutes
@@ -137,7 +137,7 @@ class IterativeResearcher:
         self.should_continue: bool = True
         self.verbose: bool = verbose
         self.tracing: bool = tracing
-        self.websocket = websocket  # 保存 websocket 实例
+        self.client_id = client_id  # 保存client_id
         
     async def run(
             self, 
@@ -231,7 +231,7 @@ class IterativeResearcher:
         行动、发现和思考的历史：
         {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}        
         """
-        await self._log_message(f"\n=== _evaluate_gaps ==={input_str}")
+        await self._log_message(f"<evaluate_gaps>评估知识差距\n{input_str}\n</evaluate_gaps>")
         result = await ResearchRunner.run(
             knowledge_gap_agent,
             input_str,
@@ -249,6 +249,9 @@ class IterativeResearcher:
         if not evaluation.research_complete:
             next_gap = evaluation.outstanding_gaps[0]
             self.conversation.set_latest_gap(next_gap)
+            """<task>
+            解决这个知识差距：{next_gap}
+            </task>"""
             await self._log_message(self.conversation.latest_task_string())
         
         return evaluation
@@ -279,14 +282,19 @@ class IterativeResearcher:
         result = await ResearchRunner.run(
             tool_selector_agent,
             input_str,
+            client_id=self.client_id
         )
         
         selection_plan = result.final_output_as(AgentSelectionPlan)
 
         # 将工具调用添加到对话中
         self.conversation.set_latest_tool_calls([
-            f"[代理] {task.agent} [查询] {task.query} [实体] {task.entity_website if task.entity_website else 'null'}" for task in selection_plan.tasks
+            f"[Agent] {task.agent} [Query] {task.query} [Entity] {task.entity_website if task.entity_website else 'null'}" for task in selection_plan.tasks
         ])
+        """
+        <action>
+        调用以下工具来解决知识差距：
+        """
         await self._log_message(self.conversation.latest_action_string())
         
         return selection_plan
@@ -364,6 +372,7 @@ class IterativeResearcher:
         # 将观察添加到对话中
         observations = result.final_output
         self.conversation.set_latest_thought(observations)
+        """获取最新的思考。<thought>"""
         await self._log_message(self.conversation.latest_thought_string())
         return observations
 
@@ -401,8 +410,10 @@ class IterativeResearcher:
         return result.final_output
     
     async def _log_message(self, message: str) -> None:
-        """增强日志功能，支持解析特定标记并通过 WebSocket 发送"""
-        if self.websocket:
+        """增强日志功能，支持SSE发送"""
+        if self.verbose:
+            print(message)
+            
             # 解析不同类型的消息
             if message.startswith("<task>"):
                 event_type = "task"
@@ -422,13 +433,3 @@ class IterativeResearcher:
             else:
                 event_type = "info"
                 content = message
-
-            await self.websocket.send_json({
-                "type": event_type,
-                "content": content,
-                "timestamp": time.time(),
-                "iteration": self.iteration
-            })
-
-        if self.verbose:
-            print(message)

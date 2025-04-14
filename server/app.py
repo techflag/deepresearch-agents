@@ -1,41 +1,87 @@
-from fastapi import FastAPI, WebSocket
+from fastapi import FastAPI, Request
+from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
 from deep_researcher import DeepResearcher
+from deep_researcher.sse_manager import SSEManager
+from pydantic import BaseModel
+import os
+import traceback
+import uuid
+import asyncio
+from fastapi.middleware.cors import CORSMiddleware
+import json
 
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+class ResearchRequest(BaseModel):
+    query: str
+    max_iterations: int = 3
+    max_time_minutes: int = 10
+
+@app.post("/api/research")
+async def start_research(request: ResearchRequest):
+    """启动研究任务的POST端点"""
+    client_id = str(uuid.uuid4())
+    researcher = DeepResearcher(
+        max_iterations=request.max_iterations,
+        max_time_minutes=request.max_time_minutes,
+        verbose=True,
+        tracing=False,
+        client_id=client_id
+    )
+    asyncio.create_task(researcher.run(query=request.query))
+    
+    return JSONResponse({
+        "status": "started",
+        "client_id": client_id,
+        "sse_url": f"/sse/{client_id}"
+    })
+
 @app.get("/")
 async def get_index():
-    frontend_path = os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
-    return FileResponse(frontend_path)
-    
-@app.websocket("/ws/research")
-async def research_websocket(websocket: WebSocket):
-    await websocket.accept()
-    
     try:
-        # 接收研究参数
-        data = await websocket.receive_json()
+        print(f"当前工作目录: {os.getcwd()}")
         
-        # 初始化研究者
-        researcher = DeepResearcher(
-            max_iterations=3,
-            max_time_minutes=10,
-            verbose=True,
-            websocket=websocket
+        frontend_path = os.path.abspath(
+            os.path.join(os.path.dirname(__file__), "..", "frontend", "index.html")
         )
+        print(f"尝试加载前端文件路径: {frontend_path}")
         
-        # 执行研究
-        report = await researcher.run(
-            query=data["query"]
-        )
-        
-        # 发送完成信号
-        await websocket.send_json({
-            "type": "complete",
-            "report": report
-        })
+        if not os.path.exists(frontend_path):
+            raise FileNotFoundError(f"前端文件未找到: {frontend_path}")
+            
+        if not os.access(frontend_path, os.R_OK):
+            raise PermissionError(f"无读取权限: {frontend_path}")
+            
+        return FileResponse(frontend_path)
         
     except Exception as e:
-        await websocket.send_json({
-            "type": "error",
-            "message": str(e)
-        })
+        print("="*50)
+        print("发生错误:")
+        print(f"错误类型: {type(e).__name__}")
+        print(f"错误信息: {str(e)}")
+        print("堆栈跟踪:")
+        traceback.print_exc()
+        print("="*50)
+        raise
+
+@app.get("/sse/{client_id}")
+async def sse_endpoint(request: Request, client_id: str):
+    async def event_stream():
+        queue = SSEManager.subscribe(client_id)
+        try:
+            while True:
+                event = await queue.get()
+                yield f"event: {event['event']}\ndata: {json.dumps(event['data'])}\n\n"
+        finally:
+            SSEManager.unsubscribe(client_id)
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream"
+    )

@@ -1,5 +1,6 @@
 import asyncio
 import time
+from fastapi import WebSocket
 from .iterative_research import IterativeResearcher
 from .agents.planner_agent import planner_agent, ReportPlan, ReportPlanSection
 from .agents.proofreader_agent import ReportDraftSection, ReportDraft, proofreader_agent
@@ -7,6 +8,7 @@ from .agents.long_writer_agent import write_report
 from .agents.baseclass import ResearchRunner
 from typing import List
 from agents.tracing import trace, gen_trace_id, custom_span
+from deep_researcher.sse_manager import SSEManager
 
 class DeepResearcher:
     """
@@ -17,12 +19,14 @@ class DeepResearcher:
             max_iterations: int = 5,
             max_time_minutes: int = 10,
             verbose: bool = True,
-            tracing: bool = False
+            tracing: bool = False,
+            client_id: str = "default" 
         ):
         self.max_iterations = max_iterations
         self.max_time_minutes = max_time_minutes
         self.verbose = verbose
         self.tracing = tracing
+        self.client_id = client_id 
 
         if not self.tracing:
             from agents import set_tracing_disabled
@@ -43,7 +47,7 @@ class DeepResearcher:
 
         # 为每个章节并发运行独立的研究循环并收集结果
         research_results: List[str] = await self._run_research_loops(report_plan)
-
+        
         # 从原始报告计划和每个章节的草稿创建最终报告
         final_report: str = await self._create_final_report(query, report_plan, research_results)
 
@@ -61,7 +65,7 @@ class DeepResearcher:
             span = custom_span(name="build_report_plan")
             span.start(mark_as_current=True)
 
-        self._log_message("=== 构建报告计划 ===")
+        self._log_message("<plan—start> 构建报告大纲 <plan—start>")
         user_message = f"QUERY: {query}"
         result = await ResearchRunner.run(
             planner_agent,
@@ -76,11 +80,11 @@ class DeepResearcher:
                 message_log += f"\n\n以下背景上下文已包含在报告构建中：\n{report_plan.background_context}"
             else:
                 message_log += "\n\n报告构建中未提供背景上下文。\n"
-            self._log_message(f"已创建包含 {num_sections} 个章节的报告计划：\n{message_log}")
+            self._log_message(f"<plan—section>已创建包含 {num_sections} 个章节的报告计划：\n{message_log}</plan—section>")
 
         if self.tracing:
             span.finish(reset_current=True)
-
+        self._log_message(f"<plan-end> 完整报告计划:\n{report_plan.model_dump_json(indent=2)}</plan-end>")
         return report_plan
 
     async def _run_research_loops(
@@ -93,7 +97,8 @@ class DeepResearcher:
                 max_iterations=self.max_iterations,
                 max_time_minutes=self.max_time_minutes,
                 verbose=self.verbose,
-                tracing=False  # 不进行跟踪，因为这会与我们已经为深度研究者设置的跟踪冲突
+                tracing=False,
+                client_id=self.client_id
             )
             args = {
                 "query": section.key_question,
@@ -103,20 +108,29 @@ class DeepResearcher:
             }
             
             # 仅在启用跟踪时使用自定义跨度
+            self._log_message("=== 初始化研究循环 ===")
             if self.tracing:
                 with custom_span(
                     name=f"iterative_researcher:{section.title}", 
                     data={"key_question": section.key_question}
-                ):
-                    return await iterative_researcher.run(**args)
+                ) as span:
+                    self._log_message(f"<research-start> 开始研究章节: {section.title} - 关键问题: {section.key_question}</research-start>")
+                    result = await iterative_researcher.run(**args)
+                    self._log_message(f"<research-end> 完成章节研究: {section.title}</research-end>")
+                    return result
             else:
-                return await iterative_researcher.run(**args)
+                self._log_message(f"<research-start> 开始研究章节: {section.title} - 关键问题: {section.key_question}</research-start>")
+                result = await iterative_researcher.run(**args)
+                self._log_message(f"<research-end> 完成章节研究: {section.title}</research-end>")
+                return result
         
-        self._log_message("=== 初始化研究循环 ===")
+        
         # 在单个 gather 调用中并发运行所有研究循环
         research_results = await asyncio.gather(
             *(run_research_for_section(section) for section in report_plan.report_outline)
         )
+        for i, result in enumerate(research_results):
+                self._log_message(f"<research-result> 章节 {i+1} 研究结果:\n{result}</research-result>")
         return research_results
 
     async def _create_final_report(
@@ -164,7 +178,40 @@ class DeepResearcher:
 
         return final_output
 
-    def _log_message(self, message: str) -> None:
+    async def _log_message(self, message: str) -> None:
         """如果 verbose 为 True，则记录消息"""
         if self.verbose:
             print(message)
+            
+            # 解析不同类型的消息
+            if message.startswith("<plan-start>"):
+                event_type = "plan-start"
+                content = message[12:-13]  # 移除<plan-start>和</plan-start>
+            elif message.startswith("<plan-section>"):
+                event_type = "plan-section" 
+                content = message[14:-15]  # 移除<plan-section>和</plan-section>
+            elif message.startswith("<plan-end>"):
+                event_type = "plan-end"
+                content = message[10:-11]  # 移除<plan-end>和</plan-end>
+            elif message.startswith("<research-start>"):
+                event_type = "research-start"
+                content = message[16:-17]  # 移除<research-start>和</research-start>
+            elif message.startswith("<research-end>"):
+                event_type = "research-end"
+                content = message[14:-15]  # 移除<research-end>和</research-end>
+            elif message.startswith("<research-result>"):
+                event_type = "research-result"
+                content = message[17:-18]  # 移除<research-result>和</research-result>
+            else:
+                event_type = "info"
+                content = message
+            
+           
+            try:
+                await SSEManager.publish(self.client_id, event_type, {
+                    "message": content,
+                    "timestamp": time.time(),
+                    "raw_message": message
+                })
+            except Exception as e:
+                print(f"SSE发送失败: {str(e)}")

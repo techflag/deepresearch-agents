@@ -48,10 +48,16 @@ class ResearchRunner(Runner):
     """
     
     @classmethod
-    async def run(cls, *args, **kwargs) -> RunResult:
+    async def run(cls, *args, client_id: str = "default", **kwargs) -> RunResult:
         """
         运行代理并在适用的情况下使用自定义解析器处理其输出。
+        
+        参数:
+            client_id: 客户端标识符，用于跟踪请求来源
         """
+        # 将client_id添加到kwargs中传递给底层调用
+        kwargs['client_id'] = client_id
+        
         # 调用原始run方法
         result = await Runner.run(*args, **kwargs)
         

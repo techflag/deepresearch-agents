@@ -46,9 +46,40 @@
             color: #666;
             font-size: 0.8em;
         }
+        .input-panel {
+            margin: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            resize: vertical;
+        }
+        button {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+    <div class="input-panel">
+        <h3>研究查询输入</h3>
+        <textarea id="query-input" placeholder="请输入您的研究查询..."></textarea>
+        <button id="submit-btn">开始研究</button>
+        <!-- 添加连接状态显示 -->
+        <div id="connection-status" style="margin-top: 10px; color: #666;"></div>
+    </div>
+
     <div class="research-container">
         <div class="panel" id="task-panel">
             <div class="panel-header">当前任务</div>
@@ -59,7 +90,7 @@
             <div class="content" id="action-content"></div>
         </div>
         <div class="panel" id="findings-panel">
-            <div class="panel-header">研究发现</div>
+            <div class="panel-header">发现问题</div>
             <div class="content" id="findings-content"></div>
         </div>
         <div class="panel" id="thought-panel">
@@ -76,30 +107,76 @@
     </div>
 
     <script>
-        let ws = new WebSocket('ws://localhost:8000/ws/research');
-        
-        ws.onmessage = (event) => {
-            const data = JSON.parse(event.data);
-            const timestamp = new Date().toLocaleTimeString();
-            
-            switch(data.type) {
-                case 'task':
-                    appendMessage('task-content', data.content, timestamp);
-                    break;
-                case 'action':
-                    appendMessage('action-content', data.content, timestamp);
-                    break;
-                case 'findings':
-                    appendMessage('findings-content', data.content, timestamp);
-                    break;
-                case 'thought':
-                    appendMessage('thought-content', data.content, timestamp);
-                    break;
-                case 'processing':
-                    updateProgress(data.content);
-                    break;
+        const statusElement = document.getElementById('connection-status');
+        let sse = null;
+
+        document.getElementById('submit-btn').addEventListener('click', async () => {
+            const query = document.getElementById('query-input').value;
+            if(query.trim()) {
+                statusElement.textContent = "正在发送查询...";
+                
+                try {
+                    const response = await fetch('/api/research', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            query: query,
+                            max_iterations: 5,
+                            max_time_minutes: 10
+                        })
+                    });
+                    
+                    const data = await response.json();
+                    statusElement.textContent = "研究任务已启动";
+                    statusElement.style.color = "#4CAF50";
+                    
+                    // 初始化SSE连接
+                    initSSE(data.client_id);
+                    
+                } catch (error) {
+                    statusElement.textContent = `请求失败: ${error.message}`;
+                    statusElement.style.color = "#F44336";
+                }
+            } else {
+                alert('请输入有效的研究查询');
             }
-        };
+        });
+
+        function initSSE(clientId) {
+            if(sse) sse.close();
+            
+            sse = new EventSource(`/sse/${clientId}`);
+            
+            sse.onmessage = (event) => {
+                const data = JSON.parse(event.data);
+                const timestamp = new Date().toLocaleTimeString();
+                
+                switch(data.type) {
+                    case 'task':
+                        appendMessage('task-content', data.content, timestamp);
+                        break;
+                    case 'action':
+                        appendMessage('action-content', data.content, timestamp);
+                        break;
+                    case 'findings':
+                        appendMessage('findings-content', data.content, timestamp);
+                        break;
+                    case 'thought':
+                        appendMessage('thought-content', data.content, timestamp);
+                        break;
+                    case 'processing':
+                        updateProgress(data.content);
+                        break;
+                }
+            };
+            
+            sse.onerror = () => {
+                statusElement.textContent = "SSE连接错误";
+                statusElement.style.color = "#F44336";
+            };
+        }
 
         function appendMessage(containerId, content, timestamp) {
             const container = document.getElementById(containerId);
