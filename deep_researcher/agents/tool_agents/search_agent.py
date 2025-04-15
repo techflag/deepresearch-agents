@@ -21,6 +21,21 @@ from . import ToolAgentOutput
 from ..baseclass import ResearchAgent
 from ..utils.parse_output import create_type_parser
 
+"""
+entity_website 是一个可选参数，用于指定特定网站域名来限制搜索范围。例如：
+
+1. 如果你想搜索特定公司或组织的官方信息，可以提供其官方网站域名
+2. 搜索示例：
+   - 如果 query = "人工智能发展"，entity_website = "microsoft.com"
+   - 生成的搜索词会变成类似 "人工智能发展 site:microsoft.com"
+   - 这样搜索结果就会限制在 microsoft.com 这个域名下
+这个功能主要用于：
+
+- 确保搜索结果来自可信的官方来源
+- 在特定网站内搜索相关信息
+- 避免获取到不相关网站的信息
+在代码中，这个参数是通过 `AgentTask` 模型传入的，搜索代理会根据是否提供了这个参数来调整搜索策略。"""
+
 INSTRUCTIONS = f"""你是一位专门从网络检索和总结信息的研究助手。
 
 目标：
@@ -58,5 +73,6 @@ search_agent = ResearchAgent(
     tools=[web_search_tool],
     model=selected_model,
     output_type=ToolAgentOutput if model_supports_structured_output(selected_model) else None,
-    output_parser=create_type_parser(ToolAgentOutput) if not model_supports_structured_output(selected_model) else None
+    output_parser=create_type_parser(ToolAgentOutput) if not model_supports_structured_output(selected_model) else None,
+    pass_client_id=True  # 添加这一行
 )

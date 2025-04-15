@@ -11,8 +11,7 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from ..llm_client import fast_model, model_supports_structured_output
-from ..sse_manager import SSEManager
-from ..utils.message_parser import MessageParser
+from ..utils.logging import log_message
 
 load_dotenv()
 CONTENT_LENGTH_LIMIT = 10000  # 将爬取的内容修剪到此长度，以避免大型上下文/令牌限制问题
@@ -62,10 +61,13 @@ async def web_search(query: str ,client_id: str = "default") -> Union[List[Scrap
         return f"当SEARCH_PROVIDER设置为'openai'时，不使用web_search函数。请检查您的配置。"
     else:
         try:
+            print(f"SerperClient当前client_id：{client_id}")
             # SerperClient的延迟初始化
             global _serper_client
             if _serper_client is None:
                 _serper_client = SerperClient(client_id=client_id)
+            else:
+                _serper_client.client_id = client_id  # 更新现有实例的 
 
             search_results = await _serper_client.search(query, filter_for_relevance=True, max_results=5)
             results = await scrape_urls(search_results)
@@ -124,16 +126,8 @@ class SerperClient:
 
 
     async def search(self, query: str, filter_for_relevance: bool = True, max_results: int = 5) -> List[WebpageSnippet]:
-        """使用Serper API执行Google搜索并获取顶部结果的基本详细信息。
-        
-        参数：
-            query: 搜索查询
-            num_results: 返回的最大结果数（最多10个）
-            
-        返回：
-            包含搜索结果的字典
-        """
-        await _log_message(f"<search>执行搜索：{query}</search>",self.client_id)
+        await log_message(f"<search>执行搜索：{query}</search>", self.client_id)
+        print(f"执行搜索当前client_id：{self.client_id}")
         connector = aiohttp.TCPConnector(ssl=ssl_context)
         async with aiohttp.ClientSession(connector=connector) as session:
             async with session.post(
@@ -171,7 +165,7 @@ class SerperClient:
         
         返回{max_results}个或更少的搜索结果。
         """
-        await _log_message(f"<filter>\n过滤搜索结果：{user_prompt}\n</filter>",self.client_id)
+        await log_message(f"<filter>\n过滤搜索结果：{user_prompt}\n</filter>", self.client_id)
         try:
             result = await ResearchRunner.run(filter_agent, user_prompt)
             output = result.final_output_as(SearchResults)
@@ -306,19 +300,3 @@ def is_valid_url(url: str) -> bool:
     ]):
         return False
     return True
-
-async def _log_message(message: str, client_id: str = "default") -> None:
-    try:
-        print(message)
-        
-        sse_data = MessageParser.format_sse_data(message, client_id)
-        await SSEManager.publish(
-            client_id, 
-            sse_data["event"], 
-            sse_data["data"]
-        )
-            
-    except UnicodeEncodeError:
-        print(repr(message))
-    except Exception as e:
-        print(f"SSE发送失败: {str(e)}")

@@ -10,8 +10,7 @@ from .agents.tool_selector_agent import AgentTask, AgentSelectionPlan, tool_sele
 from .agents.thinking_agent import thinking_agent
 from .agents.tool_agents import TOOL_AGENTS, ToolAgentOutput
 from pydantic import BaseModel, Field
-from .utils.message_parser import MessageParser
-from .sse_manager import SSEManager
+from .utils.logging import log_message
 
 
 class IterationData(BaseModel):
@@ -157,12 +156,12 @@ class IterativeResearcher:
             print(f"查看跟踪：https://platform.openai.com/traces/trace?trace_id={trace_id}")
             workflow_trace.start(mark_as_current=True)
 
-        await self._log_message(f"<iteration-flow> 开始迭代研究工作流\n{query}\n</iteration-flow>")
+        await log_message(f"<iteration-flow> 开始迭代研究工作流\n{query}\n</iteration-flow>")
         
         # 迭代研究循环
         while self.should_continue and self._check_constraints():
             self.iteration += 1
-            await self._log_message(f"<iteration>\n=== 开始迭代 {self.iteration} :\n查询：{query}\n背景：{background_context}</iteration>")
+            await log_message(f"<iteration>\n=== 开始迭代 {self.iteration} :\n查询：{query}\n背景：{background_context}</iteration>")
 
             # 为此迭代设置空白的 IterationData
             self.conversation.add_iteration()
@@ -184,13 +183,13 @@ class IterativeResearcher:
                 results: Dict[str, ToolAgentOutput] = await self._execute_tools(selection_plan.tasks)
             else:
                 self.should_continue = False
-                await self._log_message("=== 迭代研究者标记为完成 - 正在完成输出 ===")
+                await log_message("=== 迭代研究者标记为完成 - 正在完成输出 ===")
         
         # 创建最终报告
         report = await self._create_final_report(query, length=output_length, instructions=output_instructions)
         
         elapsed_time = time.time() - self.start_time
-        await self._log_message(f"迭代研究者在 {int(elapsed_time // 60)} 分钟和 {int(elapsed_time % 60)} 秒后完成，经过 {self.iteration} 次迭代。")
+        await log_message(f"迭代研究者在 {int(elapsed_time // 60)} 分钟和 {int(elapsed_time % 60)} 秒后完成，经过 {self.iteration} 次迭代。")
         
         if self.tracing:
             workflow_trace.finish(reset_current=True)
@@ -200,14 +199,14 @@ class IterativeResearcher:
     def _check_constraints(self) -> bool:
         """检查是否超出了我们的约束（最大迭代次数或时间）。"""
         if self.iteration >= self.max_iterations:
-            self._log_message("\n=== 结束研究循环 ===")
-            self._log_message(f"达到最大迭代次数（{self.max_iterations}）")
+            log_message("\n=== 结束研究循环 ===")
+            log_message(f"达到最大迭代次数（{self.max_iterations}）")
             return False
         
         elapsed_minutes = (time.time() - self.start_time) / 60
         if elapsed_minutes >= self.max_time_minutes:
-            self._log_message("\n=== 结束研究循环 ===")
-            self._log_message(f"达到最大时间（{self.max_time_minutes} 分钟）")
+            log_message("\n=== 结束研究循环 ===")
+            log_message(f"达到最大时间（{self.max_time_minutes} 分钟）")
             return False
         
         return True
@@ -233,7 +232,7 @@ class IterativeResearcher:
         行动、发现和思考的历史：
         {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}        
         """
-        await self._log_message(f"<evaluate_gaps>评估知识差距\n{input_str}\n</evaluate_gaps>")
+        await log_message(f"<evaluate_gaps>评估知识差距\n{input_str}\n</evaluate_gaps>")
         result = await ResearchRunner.run(
             knowledge_gap_agent,
             input_str,
@@ -243,7 +242,7 @@ class IterativeResearcher:
         try:
             evaluation = result.final_output_as(KnowledgeGapOutput)
         except Exception as e:
-            await self._log_message(f"知识差距评估解析错误: {str(e)}")
+            await log_message(f"知识差距评估解析错误: {str(e)}")
             evaluation = KnowledgeGapOutput(
                 research_complete=False,
                 outstanding_gaps=["无法解析知识差距评估结果"]
@@ -255,7 +254,7 @@ class IterativeResearcher:
             """<task>
             解决这个知识差距：{next_gap}
             </task>"""
-            await self._log_message(self.conversation.latest_task_string())
+            await log_message(self.conversation.latest_task_string())
         
         return evaluation
     
@@ -281,7 +280,7 @@ class IterativeResearcher:
         行动、发现和思考的历史：
         {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}
         """
-        await self._log_message(f"<agent-select>\n=== 选择代理以解决知识差距：{gap} ===</agent-select>")
+        await log_message(f"<agent-select>\n=== 选择代理以解决知识差距：{gap} ===</agent-select>")
         result = await ResearchRunner.run(
             tool_selector_agent,
             input_str,
@@ -298,7 +297,7 @@ class IterativeResearcher:
         <action>
         调用以下工具来解决知识差距：
         """
-        await self._log_message(self.conversation.latest_action_string())
+        await log_message(self.conversation.latest_action_string())
         
         return selection_plan
     
@@ -316,7 +315,7 @@ class IterativeResearcher:
             gap, agent_name, result = await future
             results[f"{agent_name}_{gap}"] = result
             num_completed += 1
-            await self._log_message(f"<processing>\n{agent_name}执行进度：{num_completed}/{len(async_tasks)}\n</processing>")
+            await log_message(f"<processing>\n{agent_name}执行进度：{num_completed}/{len(async_tasks)}\n</processing>")
 
         # 将工具输出的发现添加到对话中
         findings = []
@@ -377,7 +376,7 @@ class IterativeResearcher:
         observations = result.final_output
         self.conversation.set_latest_thought(observations)
         """获取最新的思考。<thought>"""
-        await self._log_message(self.conversation.latest_thought_string())
+        await log_message(self.conversation.latest_thought_string())
         return observations
 
     async def _create_final_report(
@@ -387,7 +386,7 @@ class IterativeResearcher:
         instructions: str = ""
         ) -> str:
         """从完成的草稿创建最终响应。"""
-        await self._log_message("=== 起草最终响应 ===")
+        await log_message("=== 起草最终响应 ===")
 
         length_str = f"* 完整响应应约为 {length}。\n" if length else ""
         instructions_str = f"* {instructions}" if instructions else ""
@@ -410,21 +409,8 @@ class IterativeResearcher:
             client_id=self.client_id
         )
         
-        await self._log_message("迭代研究者成功创建最终响应")
+        await log_message("迭代研究者成功创建最终响应")
         
         return result.final_output
     
-    async def _log_message(self, message: str) -> None:
-        """如果 verbose 为 True，则记录消息"""
-        if self.verbose:
-            print(message)
-            
-            try:
-                sse_data = MessageParser.format_sse_data(message, self.client_id)
-                await SSEManager.publish(
-                    self.client_id, 
-                    sse_data["event"], 
-                    sse_data["data"]
-                )
-            except Exception as e:
-                print(f"SSE发送失败: {str(e)}")
+    

@@ -8,8 +8,7 @@ from .agents.long_writer_agent import write_report
 from .agents.baseclass import ResearchRunner
 from typing import List
 from agents.tracing import trace, gen_trace_id, custom_span
-from deep_researcher.sse_manager import SSEManager
-from .utils.message_parser import MessageParser
+from .utils.logging import log_message
 
 class DeepResearcher:
     """
@@ -53,7 +52,7 @@ class DeepResearcher:
         final_report: str = await self._create_final_report(query, report_plan, research_results)
 
         elapsed_time = time.time() - start_time
-        self._log_message(f"DeepResearcher 在 {int(elapsed_time // 60)} 分钟和 {int(elapsed_time % 60)} 秒内完成")
+        await log_message(f"DeepResearcher 在 {int(elapsed_time // 60)} 分钟和 {int(elapsed_time % 60)} 秒内完成")
 
         if self.tracing:
             workflow_trace.finish(reset_current=True)
@@ -66,7 +65,8 @@ class DeepResearcher:
             span = custom_span(name="build_report_plan")
             span.start(mark_as_current=True)
 
-        await self._log_message("<plan-start> 构建报告大纲 </plan-start>")
+        await log_message("<plan-start> 构建报告大纲 </plan-start>" ,self.client_id)
+        print(f"=== 构建报告大纲 ===self.client_id:{self.client_id}")
         user_message = f"QUERY: {query}"
         result = await ResearchRunner.run(
             planner_agent,
@@ -82,11 +82,11 @@ class DeepResearcher:
                 message_log += f"\n\n以下背景上下文已包含在报告构建中：\n{report_plan.background_context}"
             else:
                 message_log += "\n\n报告构建中未提供背景上下文。\n"
-            await self._log_message(f"<plan-section>已创建包含 {num_sections} 个章节的报告计划：\n{message_log}</plan-section>")
+            await log_message(f"<plan-section>已创建包含 {num_sections} 个章节的报告计划：\n{message_log}</plan-section>")
 
         if self.tracing:
             span.finish(reset_current=True)
-        await self._log_message(f"<plan-end> 完整报告计划:\n{report_plan.model_dump_json(indent=2)}</plan-end>")
+        await log_message(f"<plan-end> 完整报告计划:\n{report_plan.model_dump_json(indent=2)}</plan-end>")
         return report_plan
 
     async def _run_research_loops(
@@ -110,20 +110,20 @@ class DeepResearcher:
             }
             
             # 仅在启用跟踪时使用自定义跨度
-            self._log_message("=== 初始化研究循环 ===")
+            await log_message("=== 初始化研究循环 ===")
             if self.tracing:
                 with custom_span(
                     name=f"iterative_researcher:{section.title}", 
                     data={"key_question": section.key_question}
                 ) as span:
-                    await self._log_message(f"<research-start> 开始研究章节: {section.title} - 关键问题: {section.key_question}</research-start>")
+                    await log_message(f"<research-start> 开始研究章节: {section.title} - 关键问题: {section.key_question}</research-start>")
                     result = await iterative_researcher.run(**args)
-                    await self._log_message(f"<research-end> 完成章节研究: {section.title}</research-end>")
+                    await log_message(f"<research-end> 完成章节研究: {section.title}</research-end>")
                     return result
             else:
-                self._log_message(f"<research-start> 开始研究章节: {section.title} - 关键问题: {section.key_question}</research-start>")
+                await log_message(f"<research-start> 开始研究章节: {section.title} - 关键问题: {section.key_question}</research-start>")
                 result = await iterative_researcher.run(**args)
-                await self._log_message(f"<research-end> 完成章节研究: {section.title}</research-end>")
+                await log_message(f"<research-end> 完成章节研究: {section.title}</research-end>")
                 return result
         
         
@@ -132,7 +132,7 @@ class DeepResearcher:
             *(run_research_for_section(section) for section in report_plan.report_outline)
         )
         for i, result in enumerate(research_results):
-                self._log_message(f"<research-result> 章节 {i+1} 研究结果:\n{result}</research-result>")
+                await log_message(f"<research-result> 章节 {i+1} 研究结果:\n{result}</research-result>")
         return research_results
 
     async def _create_final_report(
@@ -146,7 +146,7 @@ class DeepResearcher:
         if self.tracing:
             span = custom_span(name="create_final_report")
             span.start(mark_as_current=True)
-        await self._log_message(f"<report-create>=== 构建最终报告 ===</report-create>")
+        await log_message(f"<report-create>=== 构建最终报告 ===</report-create>")
         # 每个章节是一个包含该章节 markdown 的字符串
         # 从中我们需要构建一个 ReportDraft 对象，以提供给最终校对代理
         report_draft = ReportDraft(
@@ -162,7 +162,7 @@ class DeepResearcher:
 
         
         if use_long_writer:
-            await self._log_message(f"<report-draft>使用 LongWriter 处理报告草稿：\n{report_draft.model_dump_json(indent=2)}</report-draft>")
+            await log_message(f"<report-draft>使用 LongWriter 处理报告草稿：\n{report_draft.model_dump_json(indent=2)}</report-draft>")
             final_output = await write_report(query, report_plan.report_title, report_draft)
         else:
             user_prompt = f"QUERY:\n{query}\n\nREPORT DRAFT:\n{report_draft.model_dump_json()}"
@@ -174,24 +174,9 @@ class DeepResearcher:
             )
             final_output = final_report.final_output
 
-        await self._log_message(f"<report-finish>最终报告已完成</report-finish>")
+        await log_message(f"<report-finish>最终报告已完成</report-finish>")
 
         if self.tracing:
             span.finish(reset_current=True)
 
         return final_output
-
-    async def _log_message(self, message: str) -> None:
-        """如果 verbose 为 True，则记录消息"""
-        if self.verbose:
-            print(message)
-            
-            try:
-                sse_data = MessageParser.format_sse_data(message, self.client_id)
-                await SSEManager.publish(
-                    self.client_id, 
-                    sse_data["event"], 
-                    sse_data["data"]
-                )
-            except Exception as e:
-                print(f"SSE发送失败: {str(e)}")
