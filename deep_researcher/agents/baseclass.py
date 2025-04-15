@@ -16,13 +16,10 @@ class ResearchAgent(Agent[TContext]):
         self,
         *args,
         output_parser: Optional[Callable[[str], Any]] = None,
-        pass_client_id: bool = False,
         **kwargs
     ):
         # output_parser是一个函数，仅在未指定output_type时生效
         self.output_parser = output_parser
-        self.pass_client_id = pass_client_id
-        print(f"ResearchAgent initialized with pass_client_id={pass_client_id}")
         # 如果两者都指定，我们会引发错误 - 它们不能一起使用
         if self.output_parser and kwargs.get('output_type'):
             raise ValueError("不能同时指定output_parser和output_type")
@@ -50,36 +47,20 @@ class ResearchRunner(Runner):
     """
     
     @classmethod
-    async def run(cls, *args, client_id: str = "default", **kwargs) -> RunResult:
+    async def run(cls, *args, **kwargs) -> RunResult:
         """
         运行代理并在适用的情况下使用自定义解析器处理其输出。
-        
-        参数:
-            client_id: 客户端标识符，用于跟踪请求来源
         """
+        # print(f"ResearchRunner.run() 调用参数:")
+        # print(f"位置参数 (args): {args}")
+        # print(f"关键字参数 (kwargs): {kwargs}")
+        
         # 获取起始代理
         starting_agent = kwargs.get('starting_agent') or args[0]
         
-        # 处理client_id
-        current_client_id = kwargs.pop('client_id', client_id)
-        
-        # 如果代理需要client_id，则传递
-        if isinstance(starting_agent, ResearchAgent) and starting_agent.pass_client_id:
-            kwargs['client_id'] = current_client_id
-            
         # 调用原始run方法
         result = await Runner.run(*args, **kwargs)
 
-        # 注入 client_id 到 web_search 的工具调用
-        if hasattr(result, 'tool_calls'):
-            for tool_call in result.tool_calls:
-                if tool_call['function']['name'] == 'web_search':
-                    arguments = tool_call['function']['arguments']
-                    if isinstance(arguments, str):
-                        arguments = json.loads(arguments)
-                    arguments['client_id'] = current_client_id
-                    tool_call['function']['arguments'] = arguments
-        
         # 如果起始代理是ResearchAgent类型，解析输出
         if isinstance(starting_agent, ResearchAgent):
             return await starting_agent.parse_output(result)

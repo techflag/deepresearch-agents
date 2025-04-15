@@ -115,6 +115,7 @@ class SerperClient:
     def __init__(self, api_key: str = None, client_id: str = "default"):
         self.api_key = api_key or os.getenv("SERPER_API_KEY")
         self.client_id = client_id
+        print(f"SerperClient当前client_id：{self.client_id}")
         if not self.api_key:
             raise ValueError("未提供API密钥。设置SERPER_API_KEY环境变量。")
         

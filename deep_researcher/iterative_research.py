@@ -11,7 +11,7 @@ from .agents.thinking_agent import thinking_agent
 from .agents.tool_agents import TOOL_AGENTS, ToolAgentOutput
 from pydantic import BaseModel, Field
 from .utils.logging import log_message
-
+import json
 
 class IterationData(BaseModel):
     """单次研究循环迭代的数据。"""
@@ -180,6 +180,7 @@ class IterativeResearcher:
                 selection_plan: AgentSelectionPlan = await self._select_agents(next_gap, query, background_context=background_context)
 
                 # 4. 运行选定的代理以收集信息
+                print(f"选择计划: {selection_plan}")
                 results: Dict[str, ToolAgentOutput] = await self._execute_tools(selection_plan.tasks)
             else:
                 self.should_continue = False
@@ -235,8 +236,7 @@ class IterativeResearcher:
         await log_message(f"<evaluate_gaps>评估知识差距\n{input_str}\n</evaluate_gaps>")
         result = await ResearchRunner.run(
             knowledge_gap_agent,
-            input_str,
-            client_id=self.client_id
+            input_str
         )
         
         try:
@@ -277,14 +277,14 @@ class IterativeResearcher:
 
         {background}
 
+        
         行动、发现和思考的历史：
         {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}
         """
         await log_message(f"<agent-select>\n=== 选择代理以解决知识差距：{gap} ===</agent-select>")
         result = await ResearchRunner.run(
             tool_selector_agent,
-            input_str,
-            client_id=self.client_id
+            input_str
         )
         
         selection_plan = result.final_output_as(AgentSelectionPlan)
@@ -332,10 +332,12 @@ class IterativeResearcher:
             agent_name = task.agent
             agent = TOOL_AGENTS.get(agent_name)
             if agent:
+                task_data = task.model_dump()
+                task_data["client_id"] = self.client_id  # 添加client_id到任务数据
+                print(f"task_data:{task_data}")
                 result = await ResearchRunner.run(
                     agent,
-                    task.model_dump_json(),
-                    client_id=self.client_id
+                    json.dumps(task_data)
                 )
                 # 从 RunResult 中提取 ToolAgentOutput
                 output = result.final_output_as(ToolAgentOutput)
@@ -369,8 +371,7 @@ class IterativeResearcher:
         """
         result = await ResearchRunner.run(
             thinking_agent,
-            input_str,
-            client_id=self.client_id
+            input_str
         )
 
         # 将观察添加到对话中
@@ -406,8 +407,7 @@ class IterativeResearcher:
 
         result = await ResearchRunner.run(
             writer_agent,
-            input_str,
-            client_id=self.client_id
+            input_str
         )
         
         await log_message("迭代研究者成功创建最终响应")

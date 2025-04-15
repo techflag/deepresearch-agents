@@ -4,8 +4,6 @@ from bs4 import BeautifulSoup
 import aiohttp
 from .web_search import scrape_urls, ssl_context, ScrapeResult, WebpageSnippet
 from agents import function_tool
-from ..utils.message_parser import MessageParser
-from ..sse_manager import SSEManager
 from ..utils.logging import log_message
 
 

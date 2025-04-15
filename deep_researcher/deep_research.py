@@ -70,8 +70,7 @@ class DeepResearcher:
         user_message = f"QUERY: {query}"
         result = await ResearchRunner.run(
             planner_agent,
-            user_message,
-            client_id=self.client_id
+            user_message
         )
         report_plan = result.final_output_as(ReportPlan)
 
@@ -169,8 +168,7 @@ class DeepResearcher:
             # 运行校对代理以生成最终报告
             final_report = await ResearchRunner.run(
                 proofreader_agent,
-                user_prompt,
-                client_id=self.client_id
+                user_prompt
             )
             final_output = final_report.final_output
 
