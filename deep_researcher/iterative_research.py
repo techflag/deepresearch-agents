@@ -313,6 +313,7 @@ class IterativeResearcher:
         results = {}
         for future in asyncio.as_completed(async_tasks):
             gap, agent_name, result = await future
+            print(f"Tool call for {agent_name}: {result}")
             results[f"{agent_name}_{gap}"] = result
             num_completed += 1
             await log_message(f"<processing>\n{agent_name}执行进度：{num_completed}/{len(async_tasks)}\n</processing>")
