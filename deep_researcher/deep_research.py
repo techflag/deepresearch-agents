@@ -27,21 +27,17 @@ class DeepResearcher:
         self.verbose = verbose
         self.tracing = tracing
         self.client_id = client_id 
-
+        print(f"=== 初始化 DeepResearcher ===self.client_id:{self.client_id}")
         if not self.tracing:
             from agents import set_tracing_disabled
             set_tracing_disabled(True)
 
-    async def run(self, query: str) -> str:
+    async def run(self, query: str, client_id: str = None) -> str:
         """运行深度研究工作流"""
         start_time = time.time()
-
-        if self.tracing:
-            trace_id = gen_trace_id()
-            workflow_trace = trace("deep_researcher", trace_id=trace_id)
-            print(f"查看跟踪：https://platform.openai.com/traces/trace?trace_id={trace_id}")
-            workflow_trace.start(mark_as_current=True)
-
+        self.client_id = client_id if client_id else self.client_id
+        print(f"=== 开始 DeepResearcher run===self.client_id:{self.client_id}")
+        
         # 首先构建报告计划，概述章节并编译与查询相关的任何背景上下文
         report_plan: ReportPlan = await self._build_report_plan(query)
 
@@ -61,16 +57,14 @@ class DeepResearcher:
 
     async def _build_report_plan(self, query: str) -> ReportPlan:
         """构建初始报告计划，包括报告大纲（章节和关键问题）和背景上下文"""
-        if self.tracing:
-            span = custom_span(name="build_report_plan")
-            span.start(mark_as_current=True)
-
+        
         await log_message("<plan-start> 构建报告大纲 </plan-start>" ,self.client_id)
         print(f"=== 构建报告大纲 ===self.client_id:{self.client_id}")
         user_message = f"QUERY: {query}"
         result = await ResearchRunner.run(
             planner_agent,
-            user_message
+            user_message,
+            client_id = self.client_id
         )
         report_plan = result.final_output_as(ReportPlan)
 

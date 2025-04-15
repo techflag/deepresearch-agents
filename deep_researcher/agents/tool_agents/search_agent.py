@@ -42,6 +42,7 @@ INSTRUCTIONS = f"""你是一位专门从网络检索和总结信息的研究助�
 给定一个 AgentTask，按照以下步骤操作：
 - 将"query"转换为优化的 Google SERP 搜索词，限制为 3-5 个词
 - 如果提供了"entity_website"，确保在优化的 Google 搜索词中包含域名
+- 如果提供了"client_id"，将其传递给 web_search 工具以标识请求
 - 将优化的搜索词输入 web_search 工具
 - 使用 web_search 工具后，编写一个 3+ 段落的摘要，捕捉搜索结果的主要要点
 

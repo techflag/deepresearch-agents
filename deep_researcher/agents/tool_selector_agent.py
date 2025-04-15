@@ -31,6 +31,7 @@ class AgentTask(BaseModel):
     agent: str = Field(description="要使用的代理名称")
     query: str = Field(description="代理的具体查询")
     entity_website: Optional[str] = Field(description="被研究实体的网站，如果已知", default=None)
+    client_id: Optional[str] = Field(description="客户端标识符", default=None)
 
 
 class AgentSelectionPlan(BaseModel):

@@ -34,7 +34,7 @@ async def start_research(request: ResearchRequest):
         tracing=False,
         client_id=client_id
     )
-    asyncio.create_task(researcher.run(query=request.query))
+    asyncio.create_task(researcher.run(query=request.query,client_id=client_id))
     
     return JSONResponse({
         "status": "started",

@@ -41,7 +41,7 @@ _serper_client = None
 
 
 @function_tool
-async def web_search(query: str ,client_id: str = "default") -> Union[List[ScrapeResult], str]:
+async def web_search(query: str ,client_id: str ) -> Union[List[ScrapeResult], str]:
     """对给定查询执行网络搜索，并获取URL及其标题、描述和文本内容。
     
     参数：
