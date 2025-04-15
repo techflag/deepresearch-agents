@@ -75,36 +75,67 @@
     <div class="input-panel">
         <h3>研究查询输入</h3>
         <textarea id="query-input" placeholder="请输入您的研究查询..."></textarea>
-        <button id="submit-btn">开始研究</button>
-        <!-- 添加连接状态显示 -->
+        <div class="input-controls">
+            <button id="submit-btn">开始研究</button>
+            <button id="clear-btn">清空结果</button>
+        </div>
         <div id="connection-status" style="margin-top: 10px; color: #666;"></div>
     </div>
 
     <div class="research-container">
-        <div class="panel" id="task-panel">
-            <div class="panel-header">当前任务</div>
-            <div class="content" id="task-content"></div>
-        </div>
-        <div class="panel" id="action-panel">
-            <div class="panel-header">执行动作</div>
-            <div class="content" id="action-content"></div>
-        </div>
-        <div class="panel" id="findings-panel">
-            <div class="panel-header">发现问题</div>
-            <div class="content" id="findings-content"></div>
-        </div>
-        <div class="panel" id="thought-panel">
-            <div class="panel-header">思考过程</div>
-            <div class="content" id="thought-content"></div>
+        <div class="panel" id="research-panel">
+            <div class="panel-header">研究进度</div>
+            <div class="content" id="research-content"></div>
         </div>
     </div>
-    <div class="panel">
-        <div class="panel-header">处理进度</div>
-        <div class="progress-bar">
-            <div class="progress-fill" id="progress-bar"></div>
-        </div>
-        <div id="progress-text"></div>
-    </div>
+
+    <style>
+        .input-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .message {
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        /* 消息类型样式 */
+        .plan-start, .plan-section, .plan-end { background-color: #e3f2fd; }
+        .research-start, .research-end, .research-result { background-color: #f3e5f5; }
+        .report-create, .report-draft, .report-finish { background-color: #e8f5e9; }
+        .search, .filter, .scrape { background-color: #fff3e0; }
+        .error { background-color: #ffebee; }
+        .task { background-color: #f1f8e9; }
+        .action { background-color: #e0f2f1; }
+        .findings { background-color: #fce4ec; }
+        .thought { background-color: #f3e5f5; }
+        .message-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+        }
+        
+        .type-badge {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            background: rgba(0, 0, 0, 0.1);
+            color: #333;
+        }
+        
+        .message {
+            margin: 8px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        
+        .message-content {
+            margin-top: 5px;
+            white-space: pre-wrap;
+        }
+    </style>
 
     <script>
         const statusElement = document.getElementById('connection-status');
@@ -148,60 +179,60 @@
             if(sse) sse.close();
             
             sse = new EventSource(`/sse/${clientId}`);
+            console.log('SSE connection initialized:', clientId); // 添加调试日志
             
             sse.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                const timestamp = new Date().toLocaleTimeString();
-                
-                switch(data.type) {
-                    case 'task':
-                        appendMessage('task-content', data.content, timestamp);
-                        break;
-                    case 'action':
-                        appendMessage('action-content', data.content, timestamp);
-                        break;
-                    case 'findings':
-                        appendMessage('findings-content', data.content, timestamp);
-                        break;
-                    case 'thought':
-                        appendMessage('thought-content', data.content, timestamp);
-                        break;
-                    case 'processing':
-                        updateProgress(data.content);
-                        break;
+                console.log('SSE message received:', event.data); // 添加调试日志
+                try {
+                    const data = JSON.parse(event.data);
+                    const timestamp = new Date().toLocaleTimeString();
+                    appendMessage('research-content', data.event, data.data, timestamp);
+                } catch (error) {
+                    console.error('Error processing SSE message:', error);
                 }
             };
             
-            sse.onerror = () => {
+            sse.onerror = (error) => {
+                console.error('SSE connection error:', error); // 添加调试日志
                 statusElement.textContent = "SSE连接错误";
                 statusElement.style.color = "#F44336";
             };
+        
+            sse.onopen = () => {
+                console.log('SSE connection opened'); // 添加调试日志
+                statusElement.textContent = "SSE连接已建立";
+                statusElement.style.color = "#4CAF50";
+            };
         }
 
-        function appendMessage(containerId, content, timestamp) {
+        function appendMessage(containerId, type, content, timestamp) {
             const container = document.getElementById(containerId);
             const messageDiv = document.createElement('div');
-            messageDiv.className = 'message';
+            messageDiv.className = `message ${type}`;
+            
+            // 将消息类型转换为更友好的显示格式
+            const typeDisplay = type.split('-')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ');
+            
+            // 从content对象中提取实际消息内容
+            const messageContent = content.message || content;
+            
             messageDiv.innerHTML = `
-                <div class="timestamp">${timestamp}</div>
-                <div class="content">${content}</div>
+                <div class="message-header">
+                    <span class="timestamp">${timestamp}</span>
+                    <span class="type-badge">${typeDisplay}</span>
+                </div>
+                <div class="message-content">${messageContent}</div>
             `;
             container.appendChild(messageDiv);
             container.scrollTop = container.scrollHeight;
         }
 
-        function updateProgress(content) {
-            // 解析进度信息，例如："工具执行进度：2/5"
-            const match = content.match(/(\d+)\/(\d+)/);
-            if (match) {
-                const [current, total] = [parseInt(match[1]), parseInt(match[2])];
-                const percentage = (current / total) * 100;
-                
-                document.getElementById('progress-bar').style.width = `${percentage}%`;
-                document.getElementById('progress-text').textContent = 
-                    `进度：${current}/${total} (${percentage.toFixed(1)}%)`;
-            }
-        }
+        // 添加清空功能
+        document.getElementById('clear-btn').addEventListener('click', () => {
+            document.getElementById('research-content').innerHTML = '';
+        });
     </script>
 </body>
 </html>

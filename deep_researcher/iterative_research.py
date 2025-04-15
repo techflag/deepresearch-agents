@@ -10,6 +10,8 @@ from .agents.tool_selector_agent import AgentTask, AgentSelectionPlan, tool_sele
 from .agents.thinking_agent import thinking_agent
 from .agents.tool_agents import TOOL_AGENTS, ToolAgentOutput
 from pydantic import BaseModel, Field
+from .utils.message_parser import MessageParser
+from .sse_manager import SSEManager
 
 
 class IterationData(BaseModel):
@@ -155,12 +157,12 @@ class IterativeResearcher:
             print(f"查看跟踪：https://platform.openai.com/traces/trace?trace_id={trace_id}")
             workflow_trace.start(mark_as_current=True)
 
-        await self._log_message("=== 开始迭代研究工作流 ===")
+        await self._log_message(f"<iteration-flow> 开始迭代研究工作流\n{query}\n</iteration-flow>")
         
         # 迭代研究循环
         while self.should_continue and self._check_constraints():
             self.iteration += 1
-            await self._log_message(f"\n=== 开始迭代 {self.iteration} ===")
+            await self._log_message(f"<iteration>\n=== 开始迭代 {self.iteration} :\n查询：{query}\n背景：{background_context}</iteration>")
 
             # 为此迭代设置空白的 IterationData
             self.conversation.add_iteration()
@@ -235,6 +237,7 @@ class IterativeResearcher:
         result = await ResearchRunner.run(
             knowledge_gap_agent,
             input_str,
+            client_id=self.client_id
         )
         
         try:
@@ -278,7 +281,7 @@ class IterativeResearcher:
         行动、发现和思考的历史：
         {self.conversation.compile_conversation_history() or "没有之前的行动、发现或思考可用。"}
         """
-        await self._log_message(f"\n=== 选择代理以解决知识差距：{gap} ===")
+        await self._log_message(f"<agent-select>\n=== 选择代理以解决知识差距：{gap} ===</agent-select>")
         result = await ResearchRunner.run(
             tool_selector_agent,
             input_str,
@@ -301,28 +304,27 @@ class IterativeResearcher:
     
     async def _execute_tools(self, tasks: List[AgentTask]) -> Dict[str, ToolAgentOutput]:
         """并发执行选定的工具以收集信息。"""
-        with custom_span("执行工具代理"):
-            # 为每个代理创建一个任务
-            async_tasks = []
-            for task in tasks:
-                async_tasks.append(self._run_agent_task(task))
-            
-            # 并发运行所有任务
-            num_completed = 0
-            results = {}
-            for future in asyncio.as_completed(async_tasks):
-                gap, agent_name, result = await future
-                results[f"{agent_name}_{gap}"] = result
-                num_completed += 1
-                await self._log_message(f"<processing>\n工具执行进度：{num_completed}/{len(async_tasks)}\n</processing>")
+        # 为每个代理创建一个任务
+        async_tasks = []
+        for task in tasks:
+            async_tasks.append(self._run_agent_task(task))
+        
+        # 并发运行所有任务
+        num_completed = 0
+        results = {}
+        for future in asyncio.as_completed(async_tasks):
+            gap, agent_name, result = await future
+            results[f"{agent_name}_{gap}"] = result
+            num_completed += 1
+            await self._log_message(f"<processing>\n{agent_name}执行进度：{num_completed}/{len(async_tasks)}\n</processing>")
 
-            # 将工具输出的发现添加到对话中
-            findings = []
-            for tool_output in results.values():
-                findings.append(tool_output.output)
-            self.conversation.set_latest_findings(findings)
+        # 将工具输出的发现添加到对话中
+        findings = []
+        for tool_output in results.values():
+            findings.append(tool_output.output)
+        self.conversation.set_latest_findings(findings)
 
-            return results
+        return results
     
     async def _run_agent_task(self, task: AgentTask) -> tuple[str, str, ToolAgentOutput]:
         """运行单个代理任务并返回结果。"""
@@ -333,6 +335,7 @@ class IterativeResearcher:
                 result = await ResearchRunner.run(
                     agent,
                     task.model_dump_json(),
+                    client_id=self.client_id
                 )
                 # 从 RunResult 中提取 ToolAgentOutput
                 output = result.final_output_as(ToolAgentOutput)
@@ -367,6 +370,7 @@ class IterativeResearcher:
         result = await ResearchRunner.run(
             thinking_agent,
             input_str,
+            client_id=self.client_id
         )
 
         # 将观察添加到对话中
@@ -403,6 +407,7 @@ class IterativeResearcher:
         result = await ResearchRunner.run(
             writer_agent,
             input_str,
+            client_id=self.client_id
         )
         
         await self._log_message("迭代研究者成功创建最终响应")
@@ -410,26 +415,16 @@ class IterativeResearcher:
         return result.final_output
     
     async def _log_message(self, message: str) -> None:
-        """增强日志功能，支持SSE发送"""
+        """如果 verbose 为 True，则记录消息"""
         if self.verbose:
             print(message)
             
-            # 解析不同类型的消息
-            if message.startswith("<task>"):
-                event_type = "task"
-                content = message[6:-7]  # 移除 <task> 和 </task>
-            elif message.startswith("<action>"):
-                event_type = "action"
-                content = message[8:-9]  # 移除 <action> 和 </action>
-            elif message.startswith("<findings>"):
-                event_type = "findings"
-                content = message[10:-11]  # 移除 <findings> 和 </findings>
-            elif message.startswith("<thought>"):
-                event_type = "thought"
-                content = message[9:-10]  # 移除 <thought> 和 </thought>
-            elif message.startswith("<processing>"):
-                event_type = "processing"
-                content = message[12:-13]  # 移除 <processing> 和 </processing>
-            else:
-                event_type = "info"
-                content = message
+            try:
+                sse_data = MessageParser.format_sse_data(message, self.client_id)
+                await SSEManager.publish(
+                    self.client_id, 
+                    sse_data["event"], 
+                    sse_data["data"]
+                )
+            except Exception as e:
+                print(f"SSE发送失败: {str(e)}")

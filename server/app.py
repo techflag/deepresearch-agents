@@ -77,11 +77,19 @@ async def sse_endpoint(request: Request, client_id: str):
         try:
             while True:
                 event = await queue.get()
-                yield f"event: {event['event']}\ndata: {json.dumps(event['data'])}\n\n"
+                if event is None:  # 添加检查
+                    break
+                # 修改消息格式
+                yield f"data: {json.dumps(event)}\n\n"
         finally:
             SSEManager.unsubscribe(client_id)
 
     return StreamingResponse(
         event_stream(),
-        media_type="text/event-stream"
+        media_type="text/event-stream",
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'X-Accel-Buffering': 'no'
+        }
     )
