@@ -20,6 +20,8 @@ from ...llm_client import fast_model, model_supports_structured_output, get_base
 from . import ToolAgentOutput
 from ..baseclass import ResearchAgent
 from ..utils.parse_output import create_type_parser
+from typing import Dict, Any
+from ...utils.logging import TraceInfo
 
 """
 entity_website 是一个可选参数，用于指定特定网站域名来限制搜索范围。例如：
@@ -68,7 +70,7 @@ elif SEARCH_PROVIDER == "openai":
 else:
     web_search_tool = web_search
 
-search_agent = ResearchAgent(
+search_agent = ResearchAgent[TraceInfo](
     name="WebSearchAgent",
     instructions=INSTRUCTIONS,
     tools=[web_search_tool],

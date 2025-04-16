@@ -1,11 +1,22 @@
 import asyncio
 import os
 import sys
+import subprocess
+
 # 添加项目根目录到Python路径
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from deep_researcher.utils.logging import TraceInfo  # 添加 TraceInfo 导入
+# 检查并安装缺失的依赖
+try:
+    import agents
+except ModuleNotFoundError:
+    print("正在安装缺失的 agents 模块...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "agents"])
+    import agents
+
 from deep_researcher import DeepResearcher
 
-def test_start_research():
+async def test_start_research():
     # 测试数据 - 使用固定client_id
     query = """
 请分析锦创书城在互联网上的传播情况，重点关注：
@@ -28,12 +39,12 @@ def test_start_research():
         max_iterations=3,
         max_time_minutes=10,
         verbose=True,
-        tracing=False,
-        client_id=client_id
+        tracing=False
     )
     
-    # 修正query变量名
-    report = asyncio.run(researcher.run(query,client_id))
+    # 注意：run方法已经接收client_id参数，不需要再次传递
+    trace_info= TraceInfo(trace_id=client_id)
+    report = await researcher.run(query,trace_info)
     print("\n=== Final Report ===")
     print(report)
 

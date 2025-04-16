@@ -23,7 +23,7 @@ NEW INFORMATION: <any additional information gathered from specialized agents>
 from .baseclass import ResearchAgent
 from ..llm_client import main_model
 from datetime import datetime
-
+from ..utils.logging import TraceInfo  # 添加这个导入
 INSTRUCTIONS = f"""
 你是一位资深研究员，负责全面回答研究查询。
 今天的日期是 {datetime.now().strftime('%Y-%m-%d')}。
@@ -47,7 +47,7 @@ INSTRUCTIONS = f"""
 * 如果用户提示中提供了任何额外指南，请严格遵循，并优先于这些系统指示。
 """
 
-writer_agent = ResearchAgent(
+writer_agent = ResearchAgent[TraceInfo](
     name="WriterAgent",
     instructions=INSTRUCTIONS,
     model=main_model,

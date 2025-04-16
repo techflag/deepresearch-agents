@@ -19,7 +19,7 @@ from typing import List
 from .baseclass import ResearchAgent
 from ..llm_client import fast_model
 from datetime import datetime
-
+from ..utils.logging import TraceInfo  # 添加这个导入
 
 class ReportDraftSection(BaseModel):
     """A section of the report that needs to be written"""
@@ -60,7 +60,7 @@ INSTRUCTIONS = f"""
 """
 
     
-proofreader_agent = ResearchAgent(
+proofreader_agent = ResearchAgent[TraceInfo](
     name="ProofreaderAgent",
     instructions=INSTRUCTIONS,
     model=fast_model

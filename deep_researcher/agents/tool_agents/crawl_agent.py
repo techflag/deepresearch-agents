@@ -15,7 +15,7 @@ from . import ToolAgentOutput
 from ...llm_client import fast_model, model_supports_structured_output
 from ..baseclass import ResearchAgent
 from ..utils.parse_output import create_type_parser
-
+from ...utils.logging import TraceInfo
 
 INSTRUCTIONS = f"""
 你是一个网站爬取代理，爬取网站内容并根据爬取的内容回答查询。请严格按照以下步骤操作：
@@ -35,7 +35,7 @@ INSTRUCTIONS = f"""
 
 selected_model = fast_model
 
-crawl_agent = ResearchAgent(
+crawl_agent = ResearchAgent[TraceInfo](
     name="SiteCrawlerAgent",
     instructions=INSTRUCTIONS,
     tools=[crawl_website],

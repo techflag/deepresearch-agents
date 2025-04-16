@@ -19,6 +19,7 @@ from .tool_agents.crawl_agent import crawl_agent
 from .tool_agents.search_agent import search_agent
 from .utils.parse_output import create_type_parser
 from datetime import datetime
+from ..utils.logging import TraceInfo  # 添加这个导入
 
 
 class ReportPlanSection(BaseModel):
@@ -61,7 +62,7 @@ INSTRUCTIONS = f"""
 
 selected_model = reasoning_model
 
-planner_agent = ResearchAgent(
+planner_agent = ResearchAgent[TraceInfo](
         name="PlannerAgent",
         instructions=INSTRUCTIONS,
     tools=[

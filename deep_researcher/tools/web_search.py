@@ -3,7 +3,7 @@ import os
 import ssl
 import aiohttp
 import asyncio
-from agents import function_tool
+from agents import function_tool,RunContextWrapper
 from ..agents.baseclass import ResearchAgent, ResearchRunner
 from ..agents.utils.parse_output import create_type_parser
 from typing import List, Union, Optional
@@ -11,7 +11,7 @@ from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from ..llm_client import fast_model, model_supports_structured_output
-from ..utils.logging import log_message
+from ..utils.logging import TraceInfo, log_message
 
 load_dotenv()
 CONTENT_LENGTH_LIMIT = 10000  # 将爬取的内容修剪到此长度，以避免大型上下文/令牌限制问题
@@ -41,7 +41,7 @@ _serper_client = None
 
 
 @function_tool
-async def web_search(query: str ,client_id: str ) -> Union[List[ScrapeResult], str]:
+async def web_search(wrapper: RunContextWrapper[TraceInfo],query: str  ) -> Union[List[ScrapeResult], str]:
     """对给定查询执行网络搜索，并获取URL及其标题、描述和文本内容。
     
     参数：
@@ -54,6 +54,7 @@ async def web_search(query: str ,client_id: str ) -> Union[List[ScrapeResult], s
             - description: 搜索结果的描述
             - text: 搜索结果的完整文本内容
     """
+    print(f"wrapper.context{wrapper.context}")
     # 仅当搜索提供商为serper时使用SerperClient
     if SEARCH_PROVIDER == "openai":
         # 对于OpenAI搜索提供商，不应直接调用此函数
@@ -61,15 +62,14 @@ async def web_search(query: str ,client_id: str ) -> Union[List[ScrapeResult], s
         return f"当SEARCH_PROVIDER设置为'openai'时，不使用web_search函数。请检查您的配置。"
     else:
         try:
-            print(f"SerperClient当前client_id：{client_id}")
+            print(f"SerperClient当前client_id：{wrapper.context.trace_id}")
             # SerperClient的延迟初始化
             global _serper_client
             if _serper_client is None:
-                _serper_client = SerperClient(client_id=client_id)
-            else:
-                _serper_client.client_id = client_id  # 更新现有实例的 
+                _serper_client = SerperClient()
+            
 
-            search_results = await _serper_client.search(query, filter_for_relevance=True, max_results=5)
+            search_results = await _serper_client.search(query, wrapper,filter_for_relevance=True, max_results=5)
             results = await scrape_urls(search_results)
             return results
         except Exception as e:
@@ -112,10 +112,9 @@ ssl_context.set_ciphers('DEFAULT:@SECLEVEL=1')  # 添加此行以允许较旧的
 class SerperClient:
     """Serper API的客户端，用于执行Google搜索。"""
 
-    def __init__(self, api_key: str = None, client_id: str = "default"):
+    def __init__(self, api_key: str = None):
         self.api_key = api_key or os.getenv("SERPER_API_KEY")
-        self.client_id = client_id
-        print(f"SerperClient当前client_id：{self.client_id}")
+        
         if not self.api_key:
             raise ValueError("未提供API密钥。设置SERPER_API_KEY环境变量。")
         
@@ -126,9 +125,9 @@ class SerperClient:
         }
 
 
-    async def search(self, query: str, filter_for_relevance: bool = True, max_results: int = 5) -> List[WebpageSnippet]:
-        await log_message(f"<search>执行搜索：{query}</search>", self.client_id)
-        print(f"执行搜索当前client_id：{self.client_id}")
+    async def search(self, wrapper: RunContextWrapper[TraceInfo], query: str,filter_for_relevance: bool = True, max_results: int = 5) -> List[WebpageSnippet]:
+        await log_message(f"<search>执行搜索：{query}</search>", wrapper.context.trace_id)
+        print(f"执行搜索当前wrapper.context.trace_id：{wrapper.context.trace_id}")
         connector = aiohttp.TCPConnector(ssl=ssl_context)
         async with aiohttp.ClientSession(connector=connector) as session:
             async with session.post(
@@ -153,9 +152,9 @@ class SerperClient:
         if not filter_for_relevance:
             return results_list[:max_results]
             
-        return await self._filter_results(results_list, query, max_results=max_results)
+        return await self._filter_results(wrapper,results_list, query, max_results=max_results)
 
-    async def _filter_results(self, results: List[WebpageSnippet], query: str, max_results: int = 5) -> List[WebpageSnippet]:
+    async def _filter_results(self, wrapper: RunContextWrapper[TraceInfo], results: List[WebpageSnippet], query: str, max_results: int = 5) -> List[WebpageSnippet]:
         serialized_results = [result.model_dump() if isinstance(result, WebpageSnippet) else result for result in results]
         
         user_prompt = f"""
@@ -166,9 +165,9 @@ class SerperClient:
         
         返回{max_results}个或更少的搜索结果。
         """
-        await log_message(f"<filter>\n过滤搜索结果：{user_prompt}\n</filter>", self.client_id)
+        await log_message(f"<filter>\n过滤搜索结果：{user_prompt}\n</filter>", {wrapper.context.trace_id})
         try:
-            result = await ResearchRunner.run(filter_agent, user_prompt)
+            result = await ResearchRunner.run(filter_agent, user_prompt, context=wrapper.context)
             output = result.final_output_as(SearchResults)
             return output.results_list
         except Exception as e:

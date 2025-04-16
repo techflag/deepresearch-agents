@@ -27,7 +27,7 @@ from pydantic import BaseModel, Field
 from .proofreader_agent import ReportDraft
 from typing import List, Tuple, Dict
 import re
-
+from ..utils.logging import TraceInfo  # 添加这个导入
 
 class LongWriterOutput(BaseModel):
     next_section_markdown: str = Field(description="下一部分的最终草稿，采用markdown格式")
@@ -69,7 +69,7 @@ LongWriterOutput(
 
 selected_model = fast_model
 
-long_writer_agent = ResearchAgent(
+long_writer_agent = ResearchAgent[TraceInfo](
     name="LongWriterAgent",
     instructions=INSTRUCTIONS,
     model=selected_model,

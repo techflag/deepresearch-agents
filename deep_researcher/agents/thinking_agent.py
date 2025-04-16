@@ -1,7 +1,7 @@
 from .baseclass import ResearchAgent
 from ..llm_client import reasoning_model
 from datetime import datetime
-
+from ..utils.logging import TraceInfo  # 添加这个导入
 INSTRUCTIONS = f"""
 你是一位研究专家，负责管理迭代研究过程。今天的日期是{datetime.now().strftime("%Y-%m-%d")}。
 
@@ -28,7 +28,7 @@ INSTRUCTIONS = f"""
 """
 
 
-thinking_agent = ResearchAgent(
+thinking_agent = ResearchAgent[TraceInfo](
     name="ThinkingAgent",
     instructions=INSTRUCTIONS,
     model=reasoning_model,

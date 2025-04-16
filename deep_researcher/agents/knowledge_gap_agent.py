@@ -22,7 +22,7 @@ from .baseclass import ResearchAgent
 from ..llm_client import fast_model, model_supports_structured_output
 from datetime import datetime
 from .utils.parse_output import create_type_parser
-
+from ..utils.logging import TraceInfo  # 添加这个导入
 class KnowledgeGapOutput(BaseModel):
     research_complete: bool = Field(..., description="研究是否足够完整以结束循环")  # 添加...表示必填
     outstanding_gaps: List[str] = Field(default_factory=list, description="待解决的知识差距列表")  # 添加默认值
@@ -60,7 +60,7 @@ INSTRUCTIONS = f"""
 
 selected_model = fast_model
 
-knowledge_gap_agent = ResearchAgent(
+knowledge_gap_agent = ResearchAgent[TraceInfo](
     name="KnowledgeGapAgent",
     instructions=INSTRUCTIONS,
     model=selected_model,

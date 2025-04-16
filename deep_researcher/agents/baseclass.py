@@ -1,7 +1,7 @@
 from typing import Any, Callable, Optional
-from agents import Agent, Runner, RunResult
+from agents import Agent, Runner, RunResult,set_tracing_disabled
 from agents.run_context import TContext
-
+set_tracing_disabled(True)
 
 class ResearchAgent(Agent[TContext]):
     """
@@ -54,16 +54,9 @@ class ResearchRunner(Runner):
         
         # 获取起始代理
         starting_agent = kwargs.get('starting_agent') or args[0]
-        
-        # 确保client_id被传递到代理实例
-        if hasattr(starting_agent, 'client_id') and 'client_id' in kwargs:
-            starting_agent.client_id = kwargs['client_id']
-            
-        # 创建过滤后的kwargs，移除Runner.run()不接受的参数
-        filtered_kwargs = {k: v for k, v in kwargs.items() if k != 'client_id'}
-            
+   
         # 调用原始run方法
-        result = await Runner.run(*args, **filtered_kwargs)
+        result = await Runner.run(*args, **kwargs)
         print(f"ResearchRunner.run() 返回值: {result}")
         
         # 如果起始代理是ResearchAgent类型，解析输出

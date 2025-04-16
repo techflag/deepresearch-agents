@@ -23,7 +23,7 @@ from ..llm_client import fast_model, model_supports_structured_output
 from datetime import datetime
 from .baseclass import ResearchAgent
 from .utils.parse_output import create_type_parser
-
+from ..utils.logging import TraceInfo  # 添加这个导入
 
 class AgentTask(BaseModel):
     """特定代理解决知识差距的任务"""
@@ -70,7 +70,7 @@ INSTRUCTIONS = f"""
 
 selected_model = fast_model
 
-tool_selector_agent = ResearchAgent(
+tool_selector_agent = ResearchAgent[TraceInfo](
     name="ToolSelectorAgent",
     instructions=INSTRUCTIONS,
     model=selected_model,

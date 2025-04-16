@@ -3,12 +3,12 @@ from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import aiohttp
 from .web_search import scrape_urls, ssl_context, ScrapeResult, WebpageSnippet
-from agents import function_tool
-from ..utils.logging import log_message
+from agents import function_tool,RunContextWrapper
+from ..utils.logging import log_message,TraceInfo
 
 
 @function_tool
-async def crawl_website(starting_url: str ,client_id: str = "default") -> Union[List[ScrapeResult], str]:
+async def crawl_website(wrapper: RunContextWrapper[TraceInfo],starting_url: str ,client_id: str = "default") -> Union[List[ScrapeResult], str]:
     """爬取网站页面，从starting_url开始，然后深入到从那里链接的页面。
     优先考虑在页眉/导航中找到的链接，然后是正文链接，然后是后续页面。
     
@@ -43,15 +43,15 @@ async def crawl_website(starting_url: str ,client_id: str = "default") -> Union[
             for a in nav_element.find_all('a', href=True):
                 link = urljoin(current_url, a['href'])
                 if urlparse(link).netloc == base_domain:
-                    await log_message(f"发现导航链接: {link}" ,client_id=client_id)
-                    print(f"发现导航链接索当前client_id：{client_id}")
+                    await log_message(f"发现导航链接: {link}" ,wrapper.context)
+                    print(f"发现导航链接索当前wrapper.context.trace_id_id：{wrapper.context.trace_id}")
                     nav_links.add(link)
         
         # 查找剩余的正文链接
         for a in soup.find_all('a', href=True):
             link = urljoin(current_url, a['href'])
             if urlparse(link).netloc == base_domain and link not in nav_links:
-                await log_message(f"<scrape>发现正文链接: {link}</scrape>" ,client_id=client_id)
+                await log_message(f"<scrape>发现正文链接: {link}</scrape>" ,wrapper.context)
                 body_links.add(link)
                 
         return list(nav_links), list(body_links)
@@ -63,7 +63,7 @@ async def crawl_website(starting_url: str ,client_id: str = "default") -> Union[
             try:
                 async with session.get(url, timeout=30) as response:
                     if response.status == 200:
-                        await log_message(f"<scrape>从URL获取HTML内容:{response.text()}</scrape>",client_id=client_id)
+                        await log_message(f"<scrape>从URL获取HTML内容:{response.text()}</scrape>",wrapper.context)
                         return await response.text()
             except Exception as e:
                 print(f"获取{url}时出错: {str(e)}")
