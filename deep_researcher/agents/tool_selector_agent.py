@@ -14,7 +14,6 @@ KNOWLEDGE GAP TO ADDRESS: <knowledge gap that needs to be addressed>
 
 可用的代理有：
 - WebSearchAgent：用于广泛主题的一般网络搜索
-- SiteCrawlerAgent：爬取特定网站的页面以检索有关它的信息
 """
 
 from pydantic import BaseModel, Field
@@ -31,7 +30,6 @@ class AgentTask(BaseModel):
     agent: str = Field(description="要使用的代理名称")
     query: str = Field(description="代理的具体查询")
     entity_website: Optional[str] = Field(description="被研究实体的网站，如果已知", default=None)
-    client_id: Optional[str] = Field(description="客户端标识符", default=None)
 
 
 class AgentSelectionPlan(BaseModel):
@@ -54,7 +52,6 @@ INSTRUCTIONS = f"""
 
 可用的专业代理：
 - WebSearchAgent：用于广泛主题的一般网络搜索（可以用不同的查询多次调用）
-- SiteCrawlerAgent：爬取特定网站的页面以检索有关它的信息 - 如果你想了解特定公司、实体或产品的信息，请使用此代理
 
 指南：
 - 在最终输出中最多同时调用3个代理

@@ -31,7 +31,8 @@ class MessageParser:
         
         # 工具相关
         "search": "<search>",
-        "filter": "<filter>",
+        "search-filter": "<search-filter>",
+        "search-result": "<search-result>",
         "scrape": "<scrape>",
         
         # 其他类型
@@ -56,14 +57,14 @@ class MessageParser:
     @classmethod
     def format_sse_data(cls, 
                        message: str, 
-                       client_id: str = "default", 
+                       trace_id: str = "default", 
                        additional_data: Optional[Dict] = None) -> Dict:
         """
         格式化SSE消息数据
         
         Args:
             message: 原始消息
-            client_id: 客户端ID
+            trace_id: 客户端ID
             additional_data: 额外的数据字段
             
         Returns:
@@ -75,7 +76,7 @@ class MessageParser:
             "message": content,
             "timestamp": time.time(),
             "raw_message": message,
-            "client_id": client_id
+            "trace_id": trace_id
         }
         
         if additional_data:

@@ -1,12 +1,24 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import FileResponse, StreamingResponse, JSONResponse
-from deep_researcher import DeepResearcher
-from deep_researcher.sse_manager import SSEManager
-from pydantic import BaseModel
 import os
 import traceback
 import uuid
 import asyncio
+import sys
+import subprocess
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from deep_researcher.utils.logging import TraceInfo  # 添加 TraceInfo 导入
+# 检查并安装缺失的依赖
+try:
+    import agents
+except ModuleNotFoundError:
+    print("正在安装缺失的 agents 模块...")
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "agents"])
+    import agents
+
+from deep_researcher import DeepResearcher
+from deep_researcher.sse_manager import SSEManager
+from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
 import json
 
@@ -31,10 +43,10 @@ async def start_research(request: ResearchRequest):
         max_iterations=request.max_iterations,
         max_time_minutes=request.max_time_minutes,
         verbose=True,
-        tracing=False,
-        client_id=client_id
+        tracing=False
     )
-    asyncio.create_task(researcher.run(query=request.query,client_id=client_id))
+    trace_info= TraceInfo(trace_id=client_id)
+    asyncio.create_task(researcher.run(query=request.query,trace_info=trace_info))
     
     return JSONResponse({
         "status": "started",

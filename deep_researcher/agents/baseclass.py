@@ -49,15 +49,14 @@ class ResearchRunner(Runner):
     @classmethod
     async def run(cls, *args, **kwargs) -> RunResult:
         """运行代理并在适用的情况下使用自定义解析器处理其输出"""
-        print(f"关键字参数 (kwargs): {kwargs}")
-        print(f"参数 (args): {args}")
+        # print(f"关键字参数 (kwargs): {kwargs}")
+        # print(f"参数 (args): {args}")
         
         # 获取起始代理
         starting_agent = kwargs.get('starting_agent') or args[0]
    
         # 调用原始run方法
         result = await Runner.run(*args, **kwargs)
-        print(f"ResearchRunner.run() 返回值: {result}")
         
         # 如果起始代理是ResearchAgent类型，解析输出
         if isinstance(starting_agent, ResearchAgent):

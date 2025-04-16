@@ -69,10 +69,6 @@ planner_agent = ResearchAgent[TraceInfo](
         search_agent.as_tool(
             tool_name="web_search",
             tool_description="使用此工具搜索与查询相关的网络信息 - 提供3-6个单词的查询作为输入"
-        ),
-        crawl_agent.as_tool(
-            tool_name="crawl_website",
-            tool_description="使用此工具爬取与查询相关的网站信息 - 提供起始URL作为输入"
         )
     ],
     model=selected_model,

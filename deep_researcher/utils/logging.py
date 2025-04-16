@@ -12,17 +12,17 @@ async def log_message(message: str, trace_info:TraceInfo, additional_data: Optio
     
     Args:
         message: 要记录的消息
-        client_id: 客户端ID
+        trace_id: 客户端ID
         additional_data: 额外的数据字段
     """
     try:
-        print(message)
         
         sse_data = MessageParser.format_sse_data(
             message, 
-            client_id=trace_info.trace_id,
+            trace_id=trace_info.trace_id,
             additional_data=additional_data
         )
+        print(f"【执行日志】{sse_data}")
         await SSEManager.publish(
             trace_info.trace_id, 
             sse_data["event"], 

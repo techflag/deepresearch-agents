@@ -7,7 +7,6 @@ from .agents.proofreader_agent import ReportDraftSection, ReportDraft, proofread
 from .agents.long_writer_agent import write_report
 from .agents.baseclass import ResearchRunner
 from typing import List
-from agents.tracing import trace, gen_trace_id, custom_span
 from .utils.logging import TraceInfo, log_message
 
 class DeepResearcher:
@@ -31,8 +30,7 @@ class DeepResearcher:
         """运行深度研究工作流"""
         start_time = time.time()
         self.trace_info = trace_info
-        print(f"=== 开始 DeepResearcher run===self.client_id:{self.trace_info.trace_id}")
-        
+        print(f"_build_report_plan: {query}")
         # 首先构建报告计划，概述章节并编译与查询相关的任何背景上下文
         report_plan: ReportPlan = await self._build_report_plan(query)
 
@@ -51,7 +49,6 @@ class DeepResearcher:
         """构建初始报告计划，包括报告大纲（章节和关键问题）和背景上下文"""
         
         await log_message("<plan-start> 构建报告大纲 </plan-start>" ,self.trace_info)
-        print(f"=== 构建报告大纲 ===self.client_id:{self.trace_info.trace_id}")
         user_message = f"QUERY: {query}"
                  
         result = await ResearchRunner.run(
@@ -118,9 +115,7 @@ class DeepResearcher:
         use_long_writer: bool = True
     ) -> str:
         """从原始报告计划和每个章节的草稿创建最终报告"""
-        if self.tracing:
-            span = custom_span(name="create_final_report")
-            span.start(mark_as_current=True)
+    
         await log_message(f"<report-create>=== 构建最终报告 ===</report-create>",self.trace_info)
         # 每个章节是一个包含该章节 markdown 的字符串
         # 从中我们需要构建一个 ReportDraft 对象，以提供给最终校对代理
@@ -150,8 +145,5 @@ class DeepResearcher:
             final_output = final_report.final_output
 
         await log_message(f"<report-finish>最终报告已完成</report-finish>",self.trace_info)
-
-        if self.tracing:
-            span.finish(reset_current=True)
 
         return final_output

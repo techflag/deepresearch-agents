@@ -330,7 +330,7 @@ class IterativeResearcher:
                 print(f"task_data:{task_data}")
                 result = await ResearchRunner.run(
                     agent,
-                    task_data,
+                    task.model_dump(),
                     context = self.trace_info
                 )
                 # 从 RunResult 中提取 ToolAgentOutput

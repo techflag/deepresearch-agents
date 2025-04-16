@@ -11,19 +11,19 @@ class SSEManager:
         return cls._instance
 
     @classmethod
-    async def publish(cls, client_id: str, event: str, data: dict):
-        if client_id in cls.channels:
-            await cls.channels[client_id].put({
+    async def publish(cls, trace_id: str, event: str, data: dict):
+        if trace_id in cls.channels:
+            await cls.channels[trace_id].put({
                 "event": event,
                 "data": data
             })
 
     @classmethod
-    def subscribe(cls, client_id: str) -> asyncio.Queue:
-        cls.channels[client_id] = asyncio.Queue()
-        return cls.channels[client_id]
+    def subscribe(cls, trace_id: str) -> asyncio.Queue:
+        cls.channels[trace_id] = asyncio.Queue()
+        return cls.channels[trace_id]
 
     @classmethod
-    def unsubscribe(cls, client_id: str):
-        if client_id in cls.channels:
-            del cls.channels[client_id]
+    def unsubscribe(cls, trace_id: str):
+        if trace_id in cls.channels:
+            del cls.channels[trace_id]

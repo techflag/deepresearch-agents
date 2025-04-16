@@ -8,7 +8,7 @@ from ..utils.logging import log_message,TraceInfo
 
 
 @function_tool
-async def crawl_website(wrapper: RunContextWrapper[TraceInfo],starting_url: str ,client_id: str = "default") -> Union[List[ScrapeResult], str]:
+async def crawl_website(wrapper: RunContextWrapper[TraceInfo],starting_url: str ) -> Union[List[ScrapeResult], str]:
     """爬取网站页面，从starting_url开始，然后深入到从那里链接的页面。
     优先考虑在页眉/导航中找到的链接，然后是正文链接，然后是后续页面。
     

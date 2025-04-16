@@ -4,7 +4,7 @@
     <title>研究进度实时追踪</title>
     <style>
         .research-container {
-            display: grid;
+           
             grid-template-columns: repeat(2, 1fr);
             gap: 20px;
             padding: 20px;
@@ -135,6 +135,28 @@
             margin-top: 5px;
             white-space: pre-wrap;
         }
+        
+        /* 添加搜索结果的样式 */
+        .search-result-item {
+            margin: 8px 0;
+            padding: 8px;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            background-color: #f9f9f9;
+        }
+        .search-result-title {
+            font-weight: bold;
+            color: #1a0dab;
+        }
+        .search-result-url {
+            color: #006621;
+            font-size: 0.9em;
+            word-break: break-all;
+        }
+        .search-result-description {
+            margin-top: 4px;
+            color: #545454;
+        }
     </style>
 
     <script>
@@ -216,7 +238,20 @@
                 .join(' ');
             
             // 从content对象中提取实际消息内容
-            const messageContent = content.message || content;
+            let messageContent = content.message || content;
+            
+            // 特殊处理搜索结果
+            if (type === 'search-result') {
+                try {
+                    // 尝试解析JSON格式的搜索结果
+                    const results = JSON.parse(messageContent);
+                    if (Array.isArray(results)) {
+                        messageContent = formatSearchResults(results);
+                    }
+                } catch (error) {
+                    console.error('解析搜索结果时出错:', error);
+                }
+            }
             
             messageDiv.innerHTML = `
                 <div class="message-header">
@@ -227,6 +262,35 @@
             `;
             container.appendChild(messageDiv);
             container.scrollTop = container.scrollHeight;
+        }
+
+        // 添加格式化搜索结果的函数
+        function formatSearchResults(results) {
+            if (!results || results.length === 0) {
+                return "未找到搜索结果";
+            }
+            
+            let formattedHtml = '<div class="search-results-container">';
+            
+            results.forEach(item => {
+                formattedHtml += `
+                    <div class="search-result-item">
+                        <div class="search-result-title">${escapeHtml(item.title || '无标题')}</div>
+                        <div class="search-result-url">${escapeHtml(item.url || '#')}</div>
+                        <div class="search-result-description">${escapeHtml(item.description || '无描述')}</div>
+                    </div>
+                `;
+            });
+            
+            formattedHtml += '</div>';
+            return formattedHtml;
+        }
+        
+        // 辅助函数：转义HTML特殊字符
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
         // 添加清空功能
