@@ -14,8 +14,8 @@
 
 相关背景阅读请参考[这里](https://www.j2.gg/thoughts/deep-research-how-it-works)。
 <h5 align="left">
-<img src="[https://github.com/user-attachments/assets/b14d9b2f-ce02-4f40-8c1a-950f4022c0cc](https://raw.githubusercontent.com/techflag/deepresearch-agents/be4c6057caab904090c798b1dba7d9a3f7483f58/2025_04_16_17_18_15.png)" width="45%">
-<img src="[https://github.com/user-attachments/assets/dfffbd1e-1fe7-49ee-ac11-902415b2b0d6](https://raw.githubusercontent.com/techflag/deepresearch-agents/be4c6057caab904090c798b1dba7d9a3f7483f58/2025_04_16_17_18_46.png)" width="45%" >
+<img src="https://github.com/user-attachments/assets/b14d9b2f-ce02-4f40-8c1a-950f4022c0cc" width="45%">
+<img src="https://github.com/user-attachments/assets/dfffbd1e-1fe7-49ee-ac11-902415b2b0d6" width="45%" >
 </h5>
 
 ## 概述
