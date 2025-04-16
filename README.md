@@ -1,4 +1,4 @@
-
+![image](https://github.com/user-attachments/assets/132d525c-e3f9-41c1-b2dc-9809b053afe3)
 
 
 启动：uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
@@ -14,8 +14,10 @@
 
 相关背景阅读请参考[这里](https://www.j2.gg/thoughts/deep-research-how-it-works)。
 <h5 align="left">
-<img src="https://github.com/user-attachments/assets/b14d9b2f-ce02-4f40-8c1a-950f4022c0cc" width="45%">
-<img src="https://github.com/user-attachments/assets/dfffbd1e-1fe7-49ee-ac11-902415b2b0d6" width="45%" >
+<img src="![image](https://github.com/user-attachments/assets/01410ba8-0a2a-440e-94c0-cdee63e7ee1a)
+" width="45%">
+<img src="![image](https://github.com/user-attachments/assets/2eb8b97c-2c7f-4a91-8d03-3540a57f3e5d)
+" width="45%" >
 </h5>
 
 ## 概述
