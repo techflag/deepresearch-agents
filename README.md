@@ -19,6 +19,8 @@
 <img src="![image](https://github.com/user-attachments/assets/2eb8b97c-2c7f-4a91-8d03-3540a57f3e5d)
 " width="45%" >
 </h5>
+原作者：https://github.com/qx-labs/agents-deep-research
+我是改进，对流程的log全局输出
 
 ## 概述
 
@@ -103,8 +105,8 @@ pip install deep-researcher
 Or clone the GitHub repo:
 
 ```sh
-git clone https://github.com/qx-labs/agents-deep-research.git
-cd agents-deep-research
+git clone https://github.com/techflag/deepresearch-agents.git
+cd deepresearch-agents
 pip install -r requirements.txt
 ```
 
