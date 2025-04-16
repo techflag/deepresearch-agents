@@ -145,6 +145,7 @@ class SerperClient:
                     )
                     for result in results["data"]["webPages"]["value"]
                 ]
+        print(f"results_list:{json.dumps(results_list)}")
         await log_message(f"<search-result>：{json.dumps(results_list)}</search-result>", wrapper.context)      
         if not results_list:
             return []
