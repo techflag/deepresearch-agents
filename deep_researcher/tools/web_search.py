@@ -66,7 +66,7 @@ async def web_search(wrapper: RunContextWrapper[TraceInfo],query: str  ) -> Unio
             # SerperClient的延迟初始化
             # Initiate the Serper client as a singleton
             serper_client = SerperClient()
-            search_results = await serper_client.search(wrapper,query, filter_for_relevance=True, max_results=5)
+            search_results = await serper_client.search(wrapper,query, filter_for_relevance=True, max_results=50)
             results = await scrape_urls(search_results)
             return results
         except Exception as e:
@@ -122,51 +122,68 @@ class SerperClient:
         }
 
 
-    async def search(self, wrapper: RunContextWrapper[TraceInfo], query: str,filter_for_relevance: bool = True, max_results: int = 5) -> List[WebpageSnippet]:
+    async def search(self, wrapper: RunContextWrapper[TraceInfo], query: str,filter_for_relevance: bool = True, max_results: int = 50) -> List[WebpageSnippet]:
         await log_message(f"<search>执行搜索：{query}</search>", wrapper.context)
-        # print(f"执行搜索当前wrapper.context.trace_id：{wrapper.context.trace_id},[query]:{query}")
+        print(f"执行搜索当前wrapper.context.trace_id：{wrapper.context.trace_id},[query]:{query}")
         connector = aiohttp.TCPConnector(ssl=ssl_context)
         async with aiohttp.ClientSession(connector=connector) as session:
-            # print(f"session.post开始:{self.url},{self.headers},{json.dumps({'query': query, 'summary': True})}")
-            async with session.post(
-                self.url,
-                headers=self.headers,
-                json={"query": query, "summary": True}
-            ) as response:
-                
-                response.raise_for_status()
-                results = await response.json()
-                # print(f"results:{results}")
-                results_list = [
-                    WebpageSnippet(
-                        url=result.get('url', ''),
-                        title=result.get('name', ''),
-                        description=result.get('summary', '')
-                    )
-                    for result in results["data"]["webPages"]["value"]
-                ]
-        print(f"results_list:{json.dumps(results_list)}")
-        await log_message(f"<search-result>：{json.dumps(results_list)}</search-result>", wrapper.context)      
-        if not results_list:
-            return []
-            
-        if not filter_for_relevance:
-            return results_list[:max_results]
-            
-        return await self._filter_results(wrapper,results_list, query, max_results=max_results)
+            print(f"session.post开始:{self.url}")
+            try:
+                async with session.post(
+                    self.url,
+                    headers=self.headers,
+                    json={"query": query, "summary": True}
+                ) as response:
+                    
+                    response.raise_for_status()
+                    results = await response.json()
+                    print(f"API返回结果结构: {json.dumps(list(results.keys()))}")  # 将dict_keys转换为list
+                    
+                    # 检查返回的数据结构
+                    if "data" not in results or "webPages" not in results.get("data", {}) or "value" not in results.get("data", {}).get("webPages", {}):
+                        print(f"API返回结构异常: {json.dumps(str(results)[:500])}")  # 使用str()避免序列化问题
+                        await log_message(f"<search-error>API返回结构异常</search-error>", wrapper.context)
+                        return []
+                    
+                    results_list = [
+                        WebpageSnippet(
+                            url=result.get('url', ''),
+                            title=result.get('name', ''),
+                            description=result.get('summary', '')
+                        )
+                        for result in results["data"]["webPages"]["value"]
+                    ]
+                    
+                    # 将WebpageSnippet对象转换为字典，然后序列化为JSON
+                    serialized_results = [result.model_dump() for result in results_list]
+                    print(f"results_list:{json.dumps(serialized_results, ensure_ascii=False , indent=2)}")
+                    await log_message(f"<search-result>：{json.dumps(serialized_results, ensure_ascii=False)}</search-result>", wrapper.context)      
+                    if not results_list:
+                        return []
+                        
+                    if not filter_for_relevance:
+                        return results_list[:max_results]
+                        
+                    return await self._filter_results(wrapper,results_list, query, max_results=max_results)
+            except Exception as e:
+                error_msg = f"搜索执行错误: {str(e)}"
+                print(error_msg)
+                await log_message(f"<search-error>{error_msg}</search-error>", wrapper.context)
+                return []
 
-    async def _filter_results(self, wrapper: RunContextWrapper[TraceInfo], results: List[WebpageSnippet], query: str, max_results: int = 5) -> List[WebpageSnippet]:
+    async def _filter_results(self, wrapper: RunContextWrapper[TraceInfo], results: List[WebpageSnippet], query: str, max_results: int = 50) -> List[WebpageSnippet]:
         serialized_results = [result.model_dump() if isinstance(result, WebpageSnippet) else result for result in results]
         
         user_prompt = f"""
         原始搜索查询: {query}
         
         要分析的搜索结果:
-        {json.dumps(serialized_results, indent=2)}
+        {json.dumps(serialized_results,ensure_ascii=False, indent=2)}
         
         返回{max_results}个或更少的搜索结果。
         """
-        await log_message(f"<search-filter>\n过滤搜索结果：{user_prompt}\n</search-filter>", {wrapper.context})
+        # 修改这一行，移除花括号
+        await log_message(f"<search-filter>\n过滤搜索结果：{user_prompt}\n</search-filter>", wrapper.context)
         try:
             result = await ResearchRunner.run(filter_agent, user_prompt, context=wrapper.context)
             output = result.final_output_as(SearchResults)
