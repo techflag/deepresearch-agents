@@ -44,17 +44,6 @@
 
 值得注意的是，深度研究智能体在开始时不会提出澄清性问题，因此可以自动化使用。
 
-## 示例输出
-
-深度研究示例（使用 DeepResearcher）：
-- [柏拉图的生平与著作](examples/sample_output/plato.md) - 7,980 字
-- [量子计算教科书](examples/sample_output/quantum_computing.md) - 5,253 字
-- [特斯拉深度研究](examples/sample_output/tesla.md) - 4,732 字
-
-简单研究示例（使用 IterativeResearcher）：
-- [Quantera 市场规模](examples/sample_output/quantera_market_size.md) - 1,001 字
-- [英国政府政策](examples/sample_output/labour_policies.md) - 1,077 字
-
 ## 流程图
 
 ### IterativeResearcher 流程
@@ -95,14 +84,7 @@ flowchart LR
 ```
 
 ## Installation
-
-Install using `pip`:
-
-```
-pip install deep-researcher
-```
-
-Or clone the GitHub repo:
+ clone the GitHub repo:
 
 ```sh
 git clone https://github.com/techflag/deepresearch-agents.git
