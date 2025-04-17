@@ -1,7 +1,7 @@
 ![image](https://github.com/user-attachments/assets/132d525c-e3f9-41c1-b2dc-9809b053afe3)
 
 
-启动：uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
+
 
 
 # 使用 OpenAI Agents SDK 的智能深度研究
@@ -83,8 +83,8 @@ flowchart LR
     E --> F["Final<br>Research<br>Report"]
 ```
 
-## Installation
- clone the GitHub repo:
+## 安装
+克隆 GitHub 仓库：
 
 ```sh
 git clone https://github.com/techflag/deepresearch-agents.git
@@ -92,21 +92,12 @@ cd deepresearch-agents
 pip install -r requirements.txt
 ```
 
-Then create a `.env` file with your API keys:
-
-```sh
-cp .env.example .env
-```
-
-Edit the `.env` file to add your OpenAI, Serper and other settings as needed, e.g.:
-
-```sh
-OPENAI_API_KEY=<your_key>
-SEARCH_PROVIDER=serper  # or set to openai
-SERPER_API_KEY=<your_key>
-```
+然后创建一个包含你的 API 密钥的 `.env` 文件：
 
 ## Usage
+
+### 启动
+启动：uvicorn server.app:app --reload --host 0.0.0.0 --port 8000
 
 ### Python Module
 
@@ -131,112 +122,128 @@ report = asyncio.run(
 print(report)
 ```
 
-### Command Line
+### 命令行测试
 
-Run the research assistant from the command line.
-
-If you've installed via `pip`:
+测试代码在tests目录下
 ```sh
-deep-researcher --mode deep --query "Provide a comprehensive overview of quantum computing" --max-iterations 3 --max-time 10 --verbose
+python tests/test_deep_researcher.py       # 测试深度研究智能体
+python tests/test_client_id.py
+### 命令行使用
+
+可以通过命令行运行研究助手。
+
+如果你通过 `pip` 安装：
+```sh
+deep-researcher --mode deep --query "提供一个关于量子计算的全面综述" --max-iterations 3 --max-time 10 --verbose
 ```
 
-Or if you've cloned the GitHub repo:
+或者如果你是克隆 GitHub 仓库后运行：
 
 ```sh
-python -m deep_researcher.main --mode deep --query "Provide a comprehensive overview of quantum computing" --max-iterations 3 --max-time 10 --verbose
+python -m deep_researcher.main --mode deep --query "提供一个关于量子计算的全面综述" --max-iterations 3 --max-time 10 --verbose--max-time 10 --verbose
+```
+以下是你选中部分的中文翻译：
+
+```markdown:d:\project\deepresearch-agents\README.md
+### 命令行使用
+
+可以通过命令行运行研究助手。
+
+如果你通过 `pip` 安装：
+```sh
+deep-researcher --mode deep --query "提供一个关于量子计算的全面综述" --max-iterations 3 --max-time 10 --verbose
 ```
 
-Parameters:
+或者如果你是克隆 GitHub 仓库后运行：
 
-- `--query`: The research topic or question (if not provided, you'll be prompted)
-- `--mode`: If `deep` uses the DeepResearcher, if `simple` uses the IterativeResearcher (default: deep)
-- `--max-iterations`: Maximum number of research iterations (default: 5)
-- `--max-time`: Maximum time in minutes before the research loop auto-exits to produce a final output (default: 10)
-- `--output-length`: Desired output length for the report (default: "5 pages")
-- `--output-instructions`: Additional formatting instructions for the final report
+```sh
+python -m deep_researcher.main --mode deep --query "提供一个关于量子计算的全面综述" --max-iterations 3 --max-time 10 --verbose
+```
 
-Boolean Flags:
+参数说明：
 
-- `--verbose`: Prints the research progress to console
-- `--tracing`: Traces the workflow on the OpenAI platform (only works for OpenAI models)
+- `--query`：研究主题或问题（如果未提供，将提示输入）
+- `--mode`：`deep` 使用 DeepResearcher，`simple` 使用 IterativeResearcher（默认：deep）
+- `--max-iterations`：最大研究迭代次数（默认：5）
+- `--max-time`：研究循环自动退出并生成最终输出前的最大分钟数（默认：10）
+- `--output-length`：报告期望输出长度（默认："5 pages"）
+- `--output-instructions`：最终报告的额外格式化指令
 
-## Compatible Models
+布尔型参数：
 
-The deep researcher is designed to run any model compatible with the OpenAI API spec, and does so by adjusting the `base_url` parameter to the relevant model provider. Compatible providers include OpenAI, Anthropic, Gemini, DeepSeek, Hugging Face and OpenRouter as well as locally hosted models via Ollama and LM Studio.
+- `--verbose`：在控制台打印研究进度
+- `--tracing`：在 OpenAI 平台追踪工作流（仅适用于 OpenAI 模型）
 
-However, in order for the deep researcher to be run without errors it relies on models that are highly performant at tool calling.
+## 兼容模型
 
-- If using OpenAI models, we find that the `gpt-4o-mini` is as good if not better at tool selection than `o3-mini` (which is consistent with [this leaderboard](https://gorilla.cs.berkeley.edu/leaderboard.html)). Given the speed and cost benefits we therefore advise using `gpt-4o-mini` as the model for the majority of agents in our workflow, with `o3-mini` for planning tasks and `gpt-4o` for final writing.
-- If using Gemini models, note that only Gemini 2.5 Pro (currently `gemini-2.5-pro-preview-03-25`) works well. Gemini 2.0 Flash (`gemini-2.0-flash	`), despite being listed as compatible with tool calling, very frequently fails to call any tools.
+deep researcher 设计为可运行任何兼容 OpenAI API 规范的模型，并通过调整 `base_url` 参数适配不同模型提供商。兼容的提供商包括 OpenAI、Anthropic、Gemini、DeepSeek、Hugging Face、OpenRouter 以及本地部署的 Ollama 和 LM Studio。
 
-## Architecture
+但要保证 deep researcher 能正常运行，依赖于模型具备高效的工具调用能力。
 
-The Deep Research Assistant is built with the following components:
+- 如果使用 OpenAI 模型，我们发现 `gpt-4o-mini` 在工具选择方面与 `o3-mini` 一样优秀甚至更好（这与[该排行榜](https://gorilla.cs.berkeley.edu/leaderboard.html)一致）。考虑到速度和成本优势，建议在大多数智能体中使用 `gpt-4o-mini`，规划任务用 `o3-mini`，最终写作用 `gpt-4o`。
+- 如果使用 Gemini 模型，请注意目前只有 Gemini 2.5 Pro（当前为 `gemini-2.5-pro-preview-03-25`）表现良好。Gemini 2.0 Flash（`gemini-2.0-flash`）虽然标称支持工具调用，但实际很难成功调用工具。
 
-### Core Components
+## 架构
 
-- **IterativeResearcher**: Orchestrates the iterative research workflow on a single topic or subtopic
-- **DeepResearcher**: Orchestrates a deeper and broader workflow that includes an initial report outline, calling of multiple parallel `IterativeResearch` instances, and final proofreading step
-- **LLM Client**: Manages interactions with language models so that these can be swapped out as needed
+Deep Research Assistant 由以下组件构建：
 
-### Agent System
+### 核心组件
 
-- **Knowledge Gap Agent**: Analyzes current research state and identifies gaps in knowledge
-- **Tool Selector Agent**: Determines which tools to use for addressing specific knowledge gaps
-- **Tool Agents**: Specialized agents for executing specific research actions (can be extended to add custom tools):
-  - Web Search Agent
-  - Website Crawler Agent
-- **Writer Agent**: Synthesizes research findings into coherent reports
+- **IterativeResearcher**：负责单一主题或子主题的迭代研究流程
+- **DeepResearcher**：负责更深层次和更广泛的流程，包括初步报告大纲、并行调用多个 `IterativeResearch` 实例，以及最终校对步骤
+- **LLM Client**：管理与大模型的交互，便于模型切换
 
-### Research Tools
+### 智能体系统
 
-- **Web Search**: Finds relevant information from SERP queries
-  - Our implementation uses [Serper](https://www.serper.dev) to run Google searches by default, which requires an API key set to the `SERPER_API_KEY` env variable.
-  - You can replace this with the native web search tool from OpenAI by setting the environment variable `SEARCH_PROVIDER` to `openai`
-- **Website Crawler**: Extracts detailed content from the pages of a given website
+- **Knowledge Gap Agent**：分析当前研究状态并识别知识空白
+- **Tool Selector Agent**：决定用哪些工具来解决特定知识空白
+- **Tool Agents**：专门执行具体研究动作的智能体（可扩展自定义工具）：
+  - Web Search Agent（网页搜索智能体）
+  - Website Crawler Agent（网站爬虫智能体）
+- **Writer Agent**：将研究发现整合成连贯报告
 
-### Implementing Custom Tool Agents
+### 研究工具
 
-Tool agents are agents specialized in carrying out specific tasks using one or more tools (e.g. web searches, fetching and interpreting data from an API, etc). To implement a custom tool agent:
-* Create any tools that the agent will use in the `app/tools` folder
-* Create a new tool agent that calls this tool in the `app/agents/tool_agents` folder
-* Add the tool agent definition to the `TOOL_AGENTS` variable in `app/agents/tool_agents/__init__.py`
-* Update the system prompt of `app/agents/tool_selector_agent.py` to include the name and description of the new agent, so that the ToolSelectorAgent knows of its existence
+- **Web Search**：通过 博查 查询查找相关信息
+  - 默认实现使用 [博查](https://open.bochaai.com/) 进行 Google 搜索，需要在环境变量 `博查ER_API_KEY` 中设置 API key。
+  - 你也可以将环境变量 `SEARCH_PROVIDER` 设置为 `openai`，以使用 OpenAI 的原生网页搜索工具
+- **Website Crawler**：从指定网站页面提取详细内容
 
-### Configuring Custom LLMs
+### 自定义工具智能体实现
 
-This repository is in theory compatible with any LLMs that follow the OpenAI API specs. This includes the likes of DeepSeek as well as models served through OpenRouter. However, the models need to be compatible with [Structured Outputs](https://platform.openai.com/docs/guides/structured-outputs) in the OpenAI API spec (i.e. being able to set `response_format: {type: "json_schema", ...}`).
+工具智能体专门负责用一个或多个工具执行特定任务（如网页搜索、API 数据获取与解析等）。要实现自定义工具智能体：
 
-LLMs are configured and managed in the `app/llm_client.py` file 
+* 在 `app/tools` 文件夹下创建所需工具
+* 在 `app/agents/tool_agents` 文件夹下创建调用该工具的新工具智能体
+* 在 `app/agents/tool_agents/__init__.py` 中将工具智能体定义添加到 `TOOL_AGENTS` 变量
+* 更新 `app/agents/tool_selector_agent.py` 的系统提示，加入新智能体的名称和描述，以便 ToolSelectorAgent 能识别
 
-## Trace Monitoring
+### 自定义 LLM 配置
 
-The Deep Research assistant integrates with OpenAI's trace monitoring system. Each research session generates a trace ID that can be used to monitor the execution flow and agent interactions in real-time through the OpenAI platform.
+本仓库理论上兼容所有遵循 OpenAI API 规范的 LLM，包括 DeepSeek 及通过 OpenRouter 部署的模型。但模型需支持 [结构化输出](https://platform.openai.com/docs/guides/structured-outputs)（即能设置 `response_format: {type: "json_schema", ...}`）。
 
-## Observations and Limitations
+LLM 的配置和管理在 `app/llm_client.py` 文件中完成。
 
-### Rate Limits
-- The `DeepResearcher` runs a lot of searches and API calls in parallel (at any given point in time it could be ingesting 50-60 different web pages). As a result you may find that yourself hitting rate limits for OpenAI, Gemini, Anthropic and other model providers particularly if you are on lower or free tiers. 
-- If you run into these errors, you may wish to use the `IterativeResearcher` instead which is less consumptive of API calls.
+## 追踪监控
 
-### **Output Length:** 
+Deep Research Assistant 集成了 OpenAI 的追踪监控系统。每次研究会话都会生成一个 trace ID，可用于在 OpenAI 平台实时监控执行流程和智能体交互。
 
-LLMs are not good at following guidelines on output length. You typically run into two issues:
+## 注意事项与限制
 
-- LLMs are bad at counting. When giving length instructions, it's better to provide a reference that the model will be familiar with from its training data (e.g. 'length of a tweet', 'a few paragraphs', 'length of a book') rather than a specific word count. 
-- Even though the output token limit on many of these models is massive, it is very difficult to get them to produce more than 1-2,000 words per response. There are methods such as [this one](https://medium.com/@techsachin/longwriter-using-llm-agent-based-pipeline-to-scale-llms-output-window-size-to-10-000-words-33210d299e2b) to produce longer outputs.
+### 速率限制
 
-We include an `output_length` parameter for the `IterativeResearcher` to give the user control but bear in mind the above limitations.
+- `DeepResearcher` 会并行发起大量搜索和 API 调用（任何时刻可能在处理 50-60 个网页），因此如果你使用的是 OpenAI、Gemini、Anthropic 等模型的免费或低配账号，可能会遇到速率限制。
+- 如果遇到此类错误，建议使用 `IterativeResearcher`，它对 API 的消耗较低。
 
-## TODOs:
+### **输出长度：**
 
-- [ ] Add unit tests for different model providers
-- [ ] Add example implementation for different models
-- [ ] Add compatibility with other search providers (e.g. SearXNG, Bing, Tavily, DuckDuckGo etc.)
-- [ ] Add caching (e.g. Redis) of scraped web pages to avoid duplicate work/calls
-- [ ] Add more specialized research tools (e.g. Wikipedia, arXiv, data analysis etc.)
-- [ ] Add PDF parser
-- [ ] Add integration / RAG for local files
+LLM 在遵循输出长度指令方面表现不佳，常见两类问题：
+
+- LLM 不擅长计数。建议用模型熟悉的参考（如“推文长度”、“几段文字”、“一本书的长度”）而非具体字数。
+- 虽然许多模型的输出 token 限制很高，但实际很难让它们一次生成超过 1-2,000 字。可以参考[这篇文章](https://medium.com/@techsachin/longwriter-using-llm-agent-based-pipeline-to-scale-llms-output-window-size-to-10-000-words-33210d299e2b)实现更长输出。
+
+我们为 `IterativeResearcher` 提供了 `output_length` 参数以便用户控制，但请注意上述限制。
+```
 
 ## Author
 

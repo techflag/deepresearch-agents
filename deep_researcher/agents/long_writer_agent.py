@@ -62,7 +62,10 @@ LongWriterOutput(
 - 确保部分标题与目录匹配
 - 将最终输出和参考部分格式化为markdown
 - 不要为参考部分包含标题，只需列出编号的参考文献
-
+* 不确定的参考文献如https://example.com/**，不可以胡编乱造。
+* 内容必须来源于搜索到的文献，不可以自己编造。
+* 不可以编造URL。
+* 充分利用搜集到的信息，不要胡编乱造。
 仅输出JSON。遵循以下JSON模式。不要输出其他任何内容。我将使用Pydantic解析，因此仅输出有效的JSON：
 {LongWriterOutput.model_json_schema()}
 """

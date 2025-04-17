@@ -79,7 +79,7 @@ async def web_search(wrapper: RunContextWrapper[TraceInfo], query: str) -> Union
 # ------- 定义用于按相关性过滤搜索结果的代理 -------
 
 FILTER_AGENT_INSTRUCTIONS = f"""
-你是一个搜索结果过滤器。你的任务是分析SERP搜索结果列表，并根据链接、标题和摘要确定哪些与原始查询相关。
+你是一个搜索结果过滤器。你的任务是分析搜索结果列表，并根据链接、标题和摘要确定哪些与原始查询相关。
 仅以指定格式返回相关结果。
 
 - 删除任何引用与查询实体名称相似但不相同的实体的结果。
@@ -134,7 +134,7 @@ class SerperClient:
                 async with session.post(
                     self.url,
                     headers=self.headers,
-                    json={"query": query, "summary": True}
+                    json={"query": query, "summary": True,"freshness":"oneYear","count":50}
                 ) as response:
                     
                     response.raise_for_status()
