@@ -78,3 +78,40 @@ search_agent = ResearchAgent[TraceInfo](
     output_type=ToolAgentOutput if model_supports_structured_output(selected_model) else None,
     output_parser=create_type_parser(ToolAgentOutput) if not model_supports_structured_output(selected_model) else None,
 )
+
+# 在 search_agent.py 中添加更详细的错误处理
+
+# 修改 WebSearchAgent 的 _process 方法
+async def _process(self, input_data):
+    try:
+        # 记录输入数据类型和内容
+        print(f"WebSearchAgent._process 接收到输入: 类型={type(input_data)}, 内容={input_data}")
+        
+        # 从输入中提取查询
+        query = None
+        if isinstance(input_data, dict):
+            query = input_data.get("query")
+        elif isinstance(input_data, str):
+            query = input_data
+            
+        if not query:
+            return "未提供有效的搜索查询"
+            
+        # 记录准备执行搜索
+        print(f"WebSearchAgent 准备执行搜索: {query}")
+        
+        # 调用 web_search 函数
+        try:
+            # 确保使用正确的参数顺序
+            results = await web_search(wrapper=self.context, query=query)
+            return results
+        except Exception as e:
+            import traceback
+            error_msg = f"调用 web_search 函数时出错: {str(e)}\n{traceback.format_exc()}"
+            print(error_msg)
+            return f"搜索执行错误: {str(e)}"
+    except Exception as e:
+        import traceback
+        error_msg = f"WebSearchAgent._process 方法执行错误: {str(e)}\n{traceback.format_exc()}"
+        print(error_msg)
+        return f"代理执行错误: {str(e)}"

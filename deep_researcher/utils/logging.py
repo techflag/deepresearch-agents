@@ -29,7 +29,7 @@ async def log_message(message: str, trace_info:TraceInfo, additional_data: Optio
         print(log_output)
         
         # 同时写入测试日志文件
-        test_log_path = os.path.join(os.path.dirname(__file__), "../../tests/logs/test_execution2.log")
+        test_log_path = os.path.join(os.path.dirname(__file__), "../../tests/logs/test_execution3.log")
         os.makedirs(os.path.dirname(test_log_path), exist_ok=True)
         with open(test_log_path, "a", encoding="utf-8") as f:
             f.write(f"{log_output}\n")

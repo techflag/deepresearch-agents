@@ -35,6 +35,12 @@ class MessageParser:
         "search-result": "<search-result>",
         "scrape": "<scrape>",
         
+        # 函数工具相关
+        "function_tool_web_search": "<function_tool_web_search>",
+        "function_tool_client": "<function_tool_client>",
+        "web_search_error": "<web_search_error>",
+        "research_runner_kwargs": "<research_runner_kwargs>",  # 添加 ResearchRunner 关键字参数类型
+        
         # 其他类型
         "error": "<error>",
         "task": "<task>",

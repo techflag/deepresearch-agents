@@ -41,37 +41,39 @@ _serper_client = None
 
 
 @function_tool
-async def web_search(wrapper: RunContextWrapper[TraceInfo],query: str  ) -> Union[List[ScrapeResult], str]:
-    """对给定查询执行网络搜索，并获取URL及其标题、描述和文本内容。
-    
-    参数：
-        query: 搜索查询
+async def web_search(wrapper: RunContextWrapper[TraceInfo], query: str) -> Union[List[ScrapeResult], str]:
+    """对给定查询执行网络搜索，并获取URL及其标题、描述和文本内容。"""
+    await log_message(f"<function_tool_web_search>函数开始执行: wrapper={type(wrapper)}, query={query}</function_tool_web_search>", wrapper.context)
+    try:
+        # 确保参数类型正确
+        if not isinstance(wrapper, RunContextWrapper):
+            print(f"警告: wrapper 参数类型不正确，收到: {type(wrapper)}")
+            # 如果第一个参数是字符串，可能是查询参数被错误地放在了第一位
+            if isinstance(wrapper, str) and isinstance(query, RunContextWrapper):
+                # 交换参数
+                wrapper, query = query, wrapper
+                print(f"自动交换参数: wrapper={type(wrapper)}, query={query}")
         
-    返回：
-        ScrapeResult对象列表，具有以下字段：
-            - url: 搜索结果的URL
-            - title: 搜索结果的标题
-            - description: 搜索结果的描述
-            - text: 搜索结果的完整文本内容
-    """
-    print(f"wrapper.context{wrapper.context}")
-    # 仅当搜索提供商为serper时使用SerperClient
-    if SEARCH_PROVIDER == "openai":
-        # 对于OpenAI搜索提供商，不应直接调用此函数
-        # 将使用agents模块中的WebSearchTool
-        return f"当SEARCH_PROVIDER设置为'openai'时，不使用web_search函数。请检查您的配置。"
-    else:
-        try:
+        print(f"web_search 函数开始执行: wrapper={type(wrapper)}, query={query}")
+        
+        # 仅当搜索提供商为serper时使用SerperClient
+        if SEARCH_PROVIDER == "openai":
+            # 对于OpenAI搜索提供商，不应直接调用此函数
+            return f"当SEARCH_PROVIDER设置为'openai'时，不使用web_search函数。请检查您的配置。"
+        else:
             print(f"SerperClient当前trace_id：{wrapper.context.trace_id}")
+            await log_message(f"<function_tool_client>函数开始执行: wrapper={type(wrapper)}, query={query}</function_tool_client>", wrapper.context)
             # SerperClient的延迟初始化
-            # Initiate the Serper client as a singleton
             serper_client = SerperClient()
-            search_results = await serper_client.search(wrapper,query, filter_for_relevance=True, max_results=50)
+            search_results = await serper_client.search(wrapper, query, filter_for_relevance=True, max_results=50)
             results = await scrape_urls(search_results)
             return results
-        except Exception as e:
-            # 返回用户友好的错误消息
-            return f"抱歉，搜索时遇到错误：{str(e)}"
+    except Exception as e:
+        error_msg = f"web_search 执行错误: {str(e)}"
+        await log_message(f"<web_search_error>执行错误:{str(e)}</web_search_error>", wrapper.context)
+        print(error_msg)
+        # 返回用户友好的错误消息
+        return f"抱歉，搜索时遇到错误：{str(e)}"
 
 
 # ------- 定义用于按相关性过滤搜索结果的代理 -------

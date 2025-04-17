@@ -282,6 +282,7 @@ class IterativeResearcher:
         )
         
         selection_plan = result.final_output_as(AgentSelectionPlan)
+        
 
         # 将工具调用添加到对话中
         self.conversation.set_latest_tool_calls([
@@ -325,30 +326,62 @@ class IterativeResearcher:
         try:
             agent_name = task.agent
             agent = TOOL_AGENTS.get(agent_name)
+            
+            # 添加详细日志记录
+            await log_message(f"<function_tool_client>\n_run_agent_task开始执行代理任务: {agent_name}, 查询: {task.query}\n</function_tool_client>", self.trace_info)
+            
             if agent:
-                task_data = task.model_dump()
-                print(f"task_data:{task_data}")
-                result = await ResearchRunner.run(
-                    agent,
-                    task.model_dump(),
-                    context = self.trace_info
-                )
-                # 从 RunResult 中提取 ToolAgentOutput
-                output = result.final_output_as(ToolAgentOutput)
+                try:
+                    task_data = task.model_dump()
+                    print(f"task_data:{task_data}")
+                    
+                    # 对于 WebSearchAgent，添加特殊处理
+                    await log_message(f"<function_tool_web_search>\n_run_agent_task执行WebSearchAgent搜索: {task.query}\n实体网站: {task.entity_website if task.entity_website else 'null'}\n</function_tool_web_search>", self.trace_info)
+                    
+                    # 使用关键字参数调用 ResearchRunner.run
+                    result = await ResearchRunner.run(
+                        agent, 
+                        task_data, 
+                        context=self.trace_info
+                    )
+                    
+                    # 记录代理执行完成
+                    await log_message(f"<processing>\n代理 {agent_name} 执行完成\n</processing>", self.trace_info)
+                    
+                    # 从 RunResult 中提取 ToolAgentOutput
+                    output = result.final_output_as(ToolAgentOutput)
+                    
+                    return task.gap, agent_name, output
+                except Exception as e:
+                    # 捕获并记录 ResearchRunner.run 执行过程中的详细错误
+                    import traceback
+                    error_msg = f"执行 {agent_name} 时出错：{str(e)}\n{traceback.format_exc()}"
+                    await log_message(f"<web_search_error>\n{error_msg}\n</web_search_error>", self.trace_info)
+                    output = ToolAgentOutput(
+                        output=f"执行 {agent_name} 时出错：{str(e)}",
+                        sources=[]
+                    )
+                    return task.gap, agent_name, output
             else:
+                error_msg = f"未找到代理 {agent_name} 的实现"
+                await log_message(f"<error>\n{error_msg}\n</error>", self.trace_info)
                 output = ToolAgentOutput(
-                    output=f"未找到代理 {agent_name} 的实现",
+                    output=error_msg,
                     sources=[]
                 )
+                return task.gap, agent_name, output
             
-            return task.gap, agent_name, output
         except Exception as e:
+            # 捕获并记录 _run_agent_task 函数本身的错误
+            import traceback
+            error_msg = f"执行 {task.agent} 解决差距 '{task.gap}' 时出错：{str(e)}\n{traceback.format_exc()}"
+            await log_message(f"<web_search_error>\n{error_msg}\n</web_search_error>", self.trace_info)
             error_output = ToolAgentOutput(
                 output=f"执行 {task.agent} 解决差距 '{task.gap}' 时出错：{str(e)}",
                 sources=[]
             )
             return task.gap, task.agent, error_output
-        
+    
     async def _generate_observations(self, query: str, background_context: str = "") -> str:
         """从研究的当前状态生成观察。"""
                 

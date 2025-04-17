@@ -1,6 +1,7 @@
 from typing import Any, Callable, Optional
 from agents import Agent, Runner, RunResult,set_tracing_disabled
 from agents.run_context import TContext
+from ..utils.logging import log_message
 set_tracing_disabled(True)
 
 class ResearchAgent(Agent[TContext]):
@@ -49,8 +50,9 @@ class ResearchRunner(Runner):
     @classmethod
     async def run(cls, *args, **kwargs) -> RunResult:
         """运行代理并在适用的情况下使用自定义解析器处理其输出"""
-        # print(f"关键字参数 (kwargs): {kwargs}")
-        # print(f"参数 (args): {args}")
+        print(f"关键字参数 (kwargs): {kwargs}")
+        print(f"参数 (args): {args}")
+
         
         # 获取起始代理
         starting_agent = kwargs.get('starting_agent') or args[0]
